@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Starter",
+    "slug": "starter",
+    "price": 999,
+    "priceSuffix": "/mo",
+    "headline": "Launch GPTO essentials fast",
+    "description": "Foundational GPTO plan with AI demo, lead capture, and on-screen custom report.",
+    "features": [
+      "AI demo widget on site",
+      "On-screen pricing report",
+      "Lead form to agency inbox",
+      "Basic analytics setup"
+    ],
+    "cta": "Start with Starter"
+  },
+  {
+    "name": "Growth",
+    "slug": "growth",
+    "price": 1999,
+    "priceSuffix": "/mo",
+    "headline": "Scale with telemetry & dashboards",
+    "description": "Adds telemetry dashboards, plan recommendations, and integration support.",
+    "features": [
+      "Everything in Starter",
+      "Telemetry dashboard preview",
+      "Integration support",
+      "Priority chat quota"
+    ],
+    "cta": "Grow with GPTO"
+  },
+  {
+    "name": "Pro",
+    "slug": "pro",
+    "price": 3499,
+    "priceSuffix": "/mo",
+    "headline": "Full Panthera backend power",
+    "description": "Full Panthera backend, plugin integration, and multi-brand telemetry management.",
+    "features": [
+      "Everything in Growth",
+      "Panthera backend connection",
+      "WordPress plugin integration",
+      "Multi-brand dashboards"
+    ],
+    "cta": "Go Pro"
+  },
+  {
+    "name": "Enterprise",
+    "slug": "enterprise",
+    "price": 4999,
+    "priceSuffix": "/mo",
+    "headline": "Dedicated, white-label & API",
+    "description": "Dedicated instance with advanced telemetry API and white-label dashboards.",
+    "features": [
+      "Everything in Pro",
+      "Dedicated, isolated instance",
+      "Advanced telemetry API",
+      "White-label dashboards"
+    ],
+    "cta": "Talk to Sales"
+  }
+]

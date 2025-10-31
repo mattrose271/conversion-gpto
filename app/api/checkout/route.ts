@@ -1,24 +1,31 @@
-export const runtime = 'nodejs';
+// app/api/checkout/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { Resend } from 'resend'
-import nodemailer from 'nodemailer'
 
-const stripeKey = process.env.STRIPE_SECRET_KEY || ''
-const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion:'2022-11-15' }) : null
+export const runtime = 'nodejs' // Stripe server SDK runs on Node.js runtime
 
-export async function POST(req: NextRequest){
-  if(!stripe) return NextResponse.json({ ok:false, error:'Stripe not configured' })
+const stripeKey = process.env.STRIPE_SECRET_KEY ?? ''
+const stripe = stripeKey ? new Stripe(stripeKey) : null
+
+export async function POST(req: NextRequest) {
+  if (!stripe) {
+    return NextResponse.json({ ok: false, error: 'Stripe not configured' }, { status: 500 })
+  }
+
   const { priceId } = await req.json()
-  const session = await stripe.checkout.sessions.create({
-    mode:'subscription',
-    line_items:[{ price: priceId, quantity:1 }],
-    success_url: `${process.env.SITE_URL||'http://localhost:3000'}/?success=1`,
-    cancel_url: `${process.env.SITE_URL||'http://localhost:3000'}/?canceled=1`,
-    customer_email: process.env.PRIMARY_EMAIL // optional override
-  })
-  return NextResponse.json({ url: session.url })
-}
 
-// webhook (emails after purchase)
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    'http://localhost:3000'
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}/?success=1`,
+    cancel_url: `${baseUrl}/?canceled=1`,
+    customer_email: process.env.PRIMARY_EMAIL ?? undefined
+  })
+
+  return NextResponse.json({ url: session.url })
 }

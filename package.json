@@ -1,7 +1,8 @@
 {
-  "name": "conversionia-gpto-landing",
-  "version": "0.1.0",
+  "name": "conversion-gpto",
   "private": true,
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,19 +10,22 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "14.2.5",
+    "next": "14.2.3",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "nodemailer": "^6.9.10",
-    "stripe": "^14.0.0",
-    "resend": "^3.2.0"
+    "openai": "^4.0.0",
+    "resend": "^3.2.0",
+    "stripe": "^14.23.0",
+    "nodemailer": "^6.9.14"
   },
-  "type": "module",
   "devDependencies": {
     "typescript": "^5.5.4",
     "@types/node": "^20.11.29",
     "@types/react": "^18.2.66",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.3"
+  },
+  "engines": {
+    "node": ">=18.18 <23"
   }
 }

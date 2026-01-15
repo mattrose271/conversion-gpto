@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import * as cheerio from "cheerio";
 import { XMLParser } from "fast-xml-parser";
-import pLimit from "p-limit";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({ url: z.string().url() });
 
@@ -45,14 +47,24 @@ async function getSitemapUrls(origin: string, maxPages: number) {
     if (status >= 400) return null;
 
     const parser = new XMLParser({ ignoreAttributes: false });
-    const parsed = parser.parse(text);
+    const parsed: any = parser.parse(text);
 
     const urls: string[] = [];
-    const urlset = parsed?.urlset?.url;
-    if (Array.isArray(urlset)) for (const u of urlset) if (u?.loc) urls.push(String(u.loc));
-    else if (urlset?.loc) urls.push(String(urlset.loc));
+    const urlsetRaw: any = parsed?.urlset?.url;
 
-    return urls.filter(u => u.startsWith(origin)).slice(0, maxPages);
+    // Normalize to array (handles single <url> or many <url> entries)
+    const urlEntries: any[] = Array.isArray(urlsetRaw)
+      ? urlsetRaw
+      : urlsetRaw
+      ? [urlsetRaw]
+      : [];
+
+    for (const entry of urlEntries) {
+      const loc = entry?.loc;
+      if (loc) urls.push(String(loc));
+    }
+
+    return urls.filter((u) => u.startsWith(origin)).slice(0, maxPages);
   } catch {
     return null;
   }
@@ -61,6 +73,7 @@ async function getSitemapUrls(origin: string, maxPages: number) {
 function extractInternalLinks(html: string, origin: string) {
   const $ = cheerio.load(html);
   const links = new Set<string>();
+
   $("a[href]").each((_, el) => {
     const href = String($(el).attr("href") || "").trim();
     if (!href) return;
@@ -72,6 +85,7 @@ function extractInternalLinks(html: string, origin: string) {
       }
     } catch {}
   });
+
   return [...links];
 }
 
@@ -84,13 +98,13 @@ function summarize(html: string) {
   const h2Count = $("h2").length;
   const hasJsonLd = $('script[type="application/ld+json"]').length > 0;
   const text = $("body").text().replace(/\s+/g, " ").trim().slice(0, 20000);
+
   return { title, metaDescription, canonical, h1Count, h2Count, hasJsonLd, text };
 }
 
 async function crawl(url: string) {
   const maxPages = 60;
   const maxDepth = 2;
-  const concurrency = 6;
 
   const seed = new URL(url);
   const origin = seed.origin;
@@ -102,94 +116,123 @@ async function crawl(url: string) {
   const seen = new Set<string>();
 
   if (usedSitemap) {
-    for (const u of sitemapUrls!) { queue.push({ url: u, depth: 0 }); seen.add(u); }
+    for (const u of sitemapUrls!) {
+      queue.push({ url: u, depth: 0 });
+      seen.add(u);
+    }
   } else {
-    queue.push({ url, depth: 0 }); seen.add(url);
+    queue.push({ url, depth: 0 });
+    seen.add(url);
   }
 
-  const limit = pLimit(concurrency);
   const pages: any[] = [];
 
   while (queue.length && pages.length < maxPages) {
-    const batch = queue.splice(0, Math.min(10, queue.length));
-    const results = await Promise.all(
-      batch.map(item => limit(async () => {
-        try {
-          const { status, text } = await fetchText(item.url);
-          if (status >= 400) return { url: item.url, status };
-          const s = summarize(text);
+    // Small batches to avoid huge request storms
+    const batch = queue.splice(0, Math.min(8, queue.length));
 
-          if (!usedSitemap && item.depth < maxDepth) {
-            for (const link of extractInternalLinks(text, origin)) {
-              if (!seen.has(link) && seen.size < maxPages * 3) {
-                seen.add(link);
-                queue.push({ url: link, depth: item.depth + 1 });
-              }
+    // Sequential processing (no p-limit)
+    for (const item of batch) {
+      if (pages.length >= maxPages) break;
+
+      try {
+        const { status, text } = await fetchText(item.url);
+        if (status >= 400) {
+          pages.push({ url: item.url, status });
+          continue;
+        }
+
+        const s = summarize(text);
+        pages.push({ url: item.url, status, ...s });
+
+        if (!usedSitemap && item.depth < maxDepth) {
+          for (const link of extractInternalLinks(text, origin)) {
+            if (!seen.has(link) && seen.size < maxPages * 3) {
+              seen.add(link);
+              queue.push({ url: link, depth: item.depth + 1 });
             }
           }
-
-          return { url: item.url, status, ...s };
-        } catch {
-          return { url: item.url, status: 0 };
         }
-      }))
-    );
-
-    pages.push(...results);
+      } catch {
+        pages.push({ url: item.url, status: 0 });
+      }
+    }
   }
 
   return { pages, scope: { maxPages, scannedPages: pages.length, usedSitemap } };
 }
 
 function score(pages: any[]) {
-  const ok = pages.filter(p => p.status > 0 && p.status < 400);
+  const ok = pages.filter((p) => p.status > 0 && p.status < 400);
   const n = ok.length || 1;
 
-  const titleRate = ok.filter(p => p.title && p.title.length > 2).length / n;
-  const h1Rate = ok.filter(p => (p.h1Count ?? 0) >= 1).length / n;
-  const metaRate = ok.filter(p => p.metaDescription).length / n;
-
+  // Structure
+  const titleRate = ok.filter((p) => p.title && p.title.length > 2).length / n;
+  const h1Rate = ok.filter((p) => (p.h1Count ?? 0) >= 1).length / n;
+  const metaRate = ok.filter((p) => p.metaDescription).length / n;
   const structureScore = Math.round(40 * titleRate + 35 * h1Rate + 25 * metaRate);
 
+  // Content depth (simple proxy)
   const avgText = ok.reduce((a, p) => a + (p.text?.length ?? 0), 0) / n;
   const avgH2 = ok.reduce((a, p) => a + (p.h2Count ?? 0), 0) / n;
   const contentScore = Math.round(
     (avgText >= 6000 ? 70 : avgText >= 2500 ? 55 : avgText >= 1200 ? 40 : 20) +
-    (avgH2 >= 6 ? 25 : avgH2 >= 3 ? 15 : avgH2 >= 1 ? 5 : 0)
+      (avgH2 >= 6 ? 25 : avgH2 >= 3 ? 15 : avgH2 >= 1 ? 5 : 0)
   );
 
-  const jsonLdRate = ok.filter(p => p.hasJsonLd).length / n;
-  const canonicalRate = ok.filter(p => p.canonical).length / n;
-  const errorRate = pages.filter(p => p.status === 0 || p.status >= 400).length / (pages.length || 1);
-  const technicalScore = Math.round(45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate));
+  // Technical readiness
+  const jsonLdRate = ok.filter((p) => p.hasJsonLd).length / n;
+  const canonicalRate = ok.filter((p) => p.canonical).length / n;
+  const errorRate =
+    pages.filter((p) => p.status === 0 || p.status >= 400).length /
+    (pages.length || 1);
+  const technicalScore = Math.round(
+    45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate)
+  );
 
-  const aiMentionsRate = ok.filter(p => containsAIText(p.text || "")).length / n;
+  // AI openness
+  const aiMentionsRate = ok.filter((p) => containsAIText(p.text || "")).length / n;
   const aiScore = Math.round(100 * aiMentionsRate);
 
   const grades = {
     aiOpenness: toGrade(aiScore),
     structure: toGrade(structureScore),
     contentDepth: toGrade(contentScore),
-    technicalReadiness: toGrade(technicalScore),
+    technicalReadiness: toGrade(technicalScore)
   };
+
   const overallScore = (aiScore + structureScore + contentScore + technicalScore) / 4;
   const overall = toGrade(overallScore);
 
+  // Tier mapping (simple + explainable)
   let tier: "Bronze" | "Silver" | "Gold";
-  if (overall === "A" || (overall === "B" && grades.technicalReadiness !== "D" && grades.contentDepth !== "D")) tier = "Gold";
+  if (
+    overall === "A" ||
+    (overall === "B" &&
+      grades.technicalReadiness !== "D" &&
+      grades.contentDepth !== "D")
+  )
+    tier = "Gold";
   else if (overall === "B" || overall === "C") tier = "Silver";
   else tier = "Bronze";
 
   const explanations = {
-    tierWhy: tier === "Gold"
-      ? ["Strong overall readiness with solid technical and content foundations; focus on continuous optimization."]
-      : tier === "Silver"
-      ? ["Mixed readiness: good base but clear gaps; prioritize structured content and technical signals."]
-      : ["Fundamentals are weak or missing; focus on baseline clarity and trust signals first."],
+    tierWhy:
+      tier === "Gold"
+        ? ["Strong overall readiness with solid technical and content foundations; focus on continuous optimization."]
+        : tier === "Silver"
+        ? ["Mixed readiness: good base but clear gaps; prioritize structured content and technical signals."]
+        : ["Fundamentals are weak or missing; focus on baseline clarity and trust signals first."],
     perCategory: {
       aiOpenness: {
-        strengths: aiScore >= 70 ? ["AI/automation language appears across multiple public pages (observable signals)."] : [],
-        gaps: aiScore < 70 ? ["Limited or no explicit public AI/automation disclosure signals were observed in scanned pages."] : [],
+        strengths:
+          aiScore >= 70
+            ? ["AI/automation language appears across multiple public pages (observable signals)."]
+            : [],
+        gaps:
+          aiScore < 70
+            ? ["Limited or no explicit public AI/automation disclosure signals were observed in scanned pages."]
+            : [],
         improvements: [
           "Add an AI/automation transparency note or policy page if AI-driven experiences are used.",
           "Add plain-language explainers (what is automated vs human-reviewed) where applicable."
@@ -207,15 +250,24 @@ function score(pages: any[]) {
         ]
       },
       contentDepth: {
-        strengths: contentScore >= 70 ? ["Many pages contain substantial explanatory content and structured sections."] : [],
-        gaps: contentScore < 70 ? ["Content appears thin on a meaningful portion of scanned pages."] : [],
+        strengths:
+          contentScore >= 70
+            ? ["Many pages contain substantial explanatory content and structured sections."]
+            : [],
+        gaps:
+          contentScore < 70
+            ? ["Content appears thin on a meaningful portion of scanned pages."]
+            : [],
         improvements: [
           "Add FAQs and decision content for your main services/offers.",
           "Expand thin pages with concrete details: who it’s for, how it works, proof points, and next steps."
         ]
       },
       technicalReadiness: {
-        strengths: jsonLdRate > 0 ? [`Structured data (JSON-LD) was observed on ${Math.round(jsonLdRate * n)} pages.`] : [],
+        strengths:
+          jsonLdRate > 0
+            ? [`Structured data (JSON-LD) was observed on ${ok.filter((p) => p.hasJsonLd).length} pages.`]
+            : [],
         gaps: jsonLdRate === 0 ? ["No structured data (JSON-LD schema) was observed on scanned pages."] : [],
         improvements: [
           "Add schema markup to core pages (Organization, WebSite, FAQ where appropriate).",
@@ -232,6 +284,7 @@ export async function POST(req: Request) {
   try {
     const { url } = Body.parse(await req.json());
     const started = Date.now();
+
     const { pages, scope } = await crawl(url);
     const scored = score(pages);
     const durationMs = Date.now() - started;

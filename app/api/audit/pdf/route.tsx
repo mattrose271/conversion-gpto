@@ -63,12 +63,14 @@ export async function GET(req: Request) {
     </Document>
   );
 
-  const pdf = await renderToBuffer(Pdf);
+  const pdfBuffer = await renderToBuffer(Pdf);
+const pdfBytes = new Uint8Array(pdfBuffer);
 
-  return new NextResponse(pdf, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="gpto-scorecard.pdf"`
-    }
-  });
+return new NextResponse(pdfBytes, {
+  headers: {
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="gpto-scorecard.pdf"`
+  }
+});
+
 }

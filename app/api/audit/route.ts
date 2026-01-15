@@ -4,6 +4,7 @@ import * as cheerio from "cheerio";
 import { XMLParser } from "fast-xml-parser";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const Body = z.object({ url: z.string().url() });
 
@@ -46,15 +47,21 @@ async function getSitemapUrls(origin: string, maxPages: number) {
     if (status >= 400) return null;
 
     const parser = new XMLParser({ ignoreAttributes: false });
-    const parsed = parser.parse(text);
+    const parsed: any = parser.parse(text);
 
     const urls: string[] = [];
-    const urlset = parsed?.urlset?.url;
+    const urlsetRaw: any = parsed?.urlset?.url;
 
-    if (Array.isArray(urlset)) {
-      for (const u of urlset) if (u?.loc) urls.push(String(u.loc));
-    } else if (urlset?.loc) {
-      urls.push(String(urlset.loc));
+    // Normalize to array (handles single <url> or many <url> entries)
+    const urlEntries: any[] = Array.isArray(urlsetRaw)
+      ? urlsetRaw
+      : urlsetRaw
+      ? [urlsetRaw]
+      : [];
+
+    for (const entry of urlEntries) {
+      const loc = entry?.loc;
+      if (loc) urls.push(String(loc));
     }
 
     return urls.filter((u) => u.startsWith(origin)).slice(0, maxPages);
@@ -121,10 +128,10 @@ async function crawl(url: string) {
   const pages: any[] = [];
 
   while (queue.length && pages.length < maxPages) {
-    // small batches to keep things responsive and avoid huge request storms
+    // Small batches to avoid huge request storms
     const batch = queue.splice(0, Math.min(8, queue.length));
 
-    // ✅ Sequential processing (no p-limit)
+    // Sequential processing (no p-limit)
     for (const item of batch) {
       if (pages.length >= maxPages) break;
 
@@ -176,8 +183,12 @@ function score(pages: any[]) {
   // Technical readiness
   const jsonLdRate = ok.filter((p) => p.hasJsonLd).length / n;
   const canonicalRate = ok.filter((p) => p.canonical).length / n;
-  const errorRate = pages.filter((p) => p.status === 0 || p.status >= 400).length / (pages.length || 1);
-  const technicalScore = Math.round(45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate));
+  const errorRate =
+    pages.filter((p) => p.status === 0 || p.status >= 400).length /
+    (pages.length || 1);
+  const technicalScore = Math.round(
+    45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate)
+  );
 
   // AI openness
   const aiMentionsRate = ok.filter((p) => containsAIText(p.text || "")).length / n;
@@ -195,7 +206,13 @@ function score(pages: any[]) {
 
   // Tier mapping (simple + explainable)
   let tier: "Bronze" | "Silver" | "Gold";
-  if (overall === "A" || (overall === "B" && grades.technicalReadiness !== "D" && grades.contentDepth !== "D")) tier = "Gold";
+  if (
+    overall === "A" ||
+    (overall === "B" &&
+      grades.technicalReadiness !== "D" &&
+      grades.contentDepth !== "D")
+  )
+    tier = "Gold";
   else if (overall === "B" || overall === "C") tier = "Silver";
   else tier = "Bronze";
 
@@ -208,8 +225,14 @@ function score(pages: any[]) {
         : ["Fundamentals are weak or missing; focus on baseline clarity and trust signals first."],
     perCategory: {
       aiOpenness: {
-        strengths: aiScore >= 70 ? ["AI/automation language appears across multiple public pages (observable signals)."] : [],
-        gaps: aiScore < 70 ? ["Limited or no explicit public AI/automation disclosure signals were observed in scanned pages."] : [],
+        strengths:
+          aiScore >= 70
+            ? ["AI/automation language appears across multiple public pages (observable signals)."]
+            : [],
+        gaps:
+          aiScore < 70
+            ? ["Limited or no explicit public AI/automation disclosure signals were observed in scanned pages."]
+            : [],
         improvements: [
           "Add an AI/automation transparency note or policy page if AI-driven experiences are used.",
           "Add plain-language explainers (what is automated vs human-reviewed) where applicable."
@@ -227,15 +250,24 @@ function score(pages: any[]) {
         ]
       },
       contentDepth: {
-        strengths: contentScore >= 70 ? ["Many pages contain substantial explanatory content and structured sections."] : [],
-        gaps: contentScore < 70 ? ["Content appears thin on a meaningful portion of scanned pages."] : [],
+        strengths:
+          contentScore >= 70
+            ? ["Many pages contain substantial explanatory content and structured sections."]
+            : [],
+        gaps:
+          contentScore < 70
+            ? ["Content appears thin on a meaningful portion of scanned pages."]
+            : [],
         improvements: [
           "Add FAQs and decision content for your main services/offers.",
           "Expand thin pages with concrete details: who it’s for, how it works, proof points, and next steps."
         ]
       },
       technicalReadiness: {
-        strengths: jsonLdRate > 0 ? [`Structured data (JSON-LD) was observed on ${ok.filter((p) => p.hasJsonLd).length} pages.`] : [],
+        strengths:
+          jsonLdRate > 0
+            ? [`Structured data (JSON-LD) was observed on ${ok.filter((p) => p.hasJsonLd).length} pages.`]
+            : [],
         gaps: jsonLdRate === 0 ? ["No structured data (JSON-LD schema) was observed on scanned pages."] : [],
         improvements: [
           "Add schema markup to core pages (Organization, WebSite, FAQ where appropriate).",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import * as cheerio from "cheerio";
 import { XMLParser } from "fast-xml-parser";
+import { buildRecommendations } from "./knowledgeBase"; // <- expects app/api/audit/knowledgeBase.ts
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,7 @@ async function getSitemapUrls(origin: string, maxPages: number) {
     const urls: string[] = [];
     const urlsetRaw: any = parsed?.urlset?.url;
 
+    // Normalize to array (handles single <url> or many <url> entries)
     const urlEntries: any[] = Array.isArray(urlsetRaw)
       ? urlsetRaw
       : urlsetRaw
@@ -104,15 +106,13 @@ function summarize(html: string) {
   const h1Count = $("h1").length;
   const h2Count = $("h2").length;
   const hasJsonLd = $('script[type="application/ld+json"]').length > 0;
-
-  // Keep only a slice for safety/perf
   const text = $("body").text().replace(/\s+/g, " ").trim().slice(0, 20000);
 
   return { title, metaDescription, canonical, h1Count, h2Count, hasJsonLd, text };
 }
 
 async function crawl(seedUrl: string) {
-  const maxPages = 20; // ✅ faster MVP default
+  const maxPages = 20; // ✅ speed
   const maxDepth = 2;
 
   const seed = new URL(seedUrl);
@@ -174,19 +174,16 @@ async function crawl(seedUrl: string) {
 }
 
 /**
- * ✅ AI Readiness (Answerability) model:
- * Can an AI accurately answer:
- *  - what you do
- *  - who it's for
- *  - how it works
- *  - trust/proof signals
- *
- * This is NOT "does the site mention AI".
+ * ✅ AI Readiness (Answerability): can an AI answer:
+ * - what you do
+ * - who it's for
+ * - how it works
+ * - trust/proof signals
  */
 function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
   const n = pagesOk.length || 1;
 
-  // Phrase sets (simple + defensible; can be tuned later)
+  // Phrase sets (basic + tuneable)
   const WHAT = [
     "we help",
     "we provide",
@@ -236,24 +233,14 @@ function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
   ];
 
   // Homepage detection
-  const homeCandidates = new Set<string>([
-    seedUrl,
-    origin,
-    `${origin}/`,
-    `${origin}/home`
-  ]);
+  const homeCandidates = new Set<string>([seedUrl, origin, `${origin}/`, `${origin}/home`]);
   const home = pagesOk.find((p) => homeCandidates.has(p.url));
 
   function pageText(p: any) {
     return `${p.title ?? ""} ${p.text ?? ""}`.slice(0, 12000);
   }
 
-  const counts = {
-    what: 0,
-    who: 0,
-    how: 0,
-    trust: 0
-  };
+  const counts = { what: 0, who: 0, how: 0, trust: 0 };
 
   for (const p of pagesOk) {
     const t = pageText(p);
@@ -273,17 +260,12 @@ function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
   };
 
   let score =
-    dimScore(counts.what) +
-    dimScore(counts.who) +
-    dimScore(counts.how) +
-    dimScore(counts.trust);
+    dimScore(counts.what) + dimScore(counts.who) + dimScore(counts.how) + dimScore(counts.trust);
 
-  // Small homepage bonus: if homepage exists and contains core "what" + "how", add up to 6 points
+  // Small homepage bonus: if homepage exists and contains core "what" + "how"
   if (home) {
     const ht = pageText(home);
-    const bonus =
-      (hasAny(ht, WHAT) ? 3 : 0) +
-      (hasAny(ht, HOW) ? 3 : 0);
+    const bonus = (hasAny(ht, WHAT) ? 3 : 0) + (hasAny(ht, HOW) ? 3 : 0);
     score = Math.min(100, score + bonus);
   }
 
@@ -297,7 +279,7 @@ function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
   return { score, perDim };
 }
 
-function score(pages: any[], seedUrl: string, origin: string) {
+function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boolean) {
   const ok = pages.filter((p) => p.status > 0 && p.status < 400);
   const n = ok.length || 1;
 
@@ -319,8 +301,7 @@ function score(pages: any[], seedUrl: string, origin: string) {
   const jsonLdRate = ok.filter((p) => p.hasJsonLd).length / n;
   const canonicalRate = ok.filter((p) => p.canonical).length / n;
   const errorRate =
-    pages.filter((p) => p.status === 0 || p.status >= 400).length /
-    (pages.length || 1);
+    pages.filter((p) => p.status === 0 || p.status >= 400).length / (pages.length || 1);
   const technicalScore = Math.round(
     45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate)
   );
@@ -335,7 +316,7 @@ function score(pages: any[], seedUrl: string, origin: string) {
     contentDepth: toGrade(contentScore),
     technicalReadiness: toGrade(technicalScore),
 
-    // ✅ Overall is the AI Readiness grade (as requested)
+    // ✅ Overall grade = AI Readiness grade (as requested)
     overall: toGrade(aiReadinessScore)
   };
 
@@ -354,7 +335,6 @@ function score(pages: any[], seedUrl: string, origin: string) {
     tier = "Bronze";
   }
 
-  // ✅ AI Readiness explanations based on missing answerability dimensions
   const dimLines = (label: string, count: number, total: number) =>
     `${label} language observed on ${count}/${total} scanned pages.`;
 
@@ -364,16 +344,24 @@ function score(pages: any[], seedUrl: string, origin: string) {
   const dims = answer.perDim;
 
   // Strengths: dimensions with decent coverage
-  if (dims.what.count / dims.what.total >= 0.35) aiStrengths.push(dimLines("Clear “what you do”", dims.what.count, dims.what.total));
-  if (dims.who.count / dims.who.total >= 0.35) aiStrengths.push(dimLines("Clear “who it’s for”", dims.who.count, dims.who.total));
-  if (dims.how.count / dims.how.total >= 0.35) aiStrengths.push(dimLines("Clear “how it works”", dims.how.count, dims.how.total));
-  if (dims.trust.count / dims.trust.total >= 0.35) aiStrengths.push(dimLines("Trust/proof signals", dims.trust.count, dims.trust.total));
+  if (dims.what.count / dims.what.total >= 0.35)
+    aiStrengths.push(dimLines("Clear “what you do”", dims.what.count, dims.what.total));
+  if (dims.who.count / dims.who.total >= 0.35)
+    aiStrengths.push(dimLines("Clear “who it’s for”", dims.who.count, dims.who.total));
+  if (dims.how.count / dims.how.total >= 0.35)
+    aiStrengths.push(dimLines("Clear “how it works”", dims.how.count, dims.how.total));
+  if (dims.trust.count / dims.trust.total >= 0.35)
+    aiStrengths.push(dimLines("Trust/proof signals", dims.trust.count, dims.trust.total));
 
   // Gaps: dimensions with weak coverage
-  if (dims.what.count / dims.what.total < 0.2) aiGaps.push("“What you do” is not consistently stated across key pages.");
-  if (dims.who.count / dims.who.total < 0.2) aiGaps.push("“Who it’s for” is unclear or inconsistently stated.");
-  if (dims.how.count / dims.how.total < 0.2) aiGaps.push("High-level “how it works” details are limited or hard to find.");
-  if (dims.trust.count / dims.trust.total < 0.2) aiGaps.push("Trust/proof signals (e.g., customers, case studies, security) are limited or not prominent.");
+  if (dims.what.count / dims.what.total < 0.2)
+    aiGaps.push("“What you do” is not consistently stated across key pages.");
+  if (dims.who.count / dims.who.total < 0.2)
+    aiGaps.push("“Who it’s for” is unclear or inconsistently stated.");
+  if (dims.how.count / dims.how.total < 0.2)
+    aiGaps.push("High-level “how it works” details are limited or hard to find.");
+  if (dims.trust.count / dims.trust.total < 0.2)
+    aiGaps.push("Trust/proof signals (e.g., customers, case studies, security) are limited or not prominent.");
 
   const explanations = {
     tierWhy:
@@ -405,8 +393,14 @@ function score(pages: any[], seedUrl: string, origin: string) {
         ]
       },
       contentDepth: {
-        strengths: contentScore >= 70 ? ["Many pages contain substantial explanatory content and structured sections."] : [],
-        gaps: contentScore < 70 ? ["Content appears thin on a meaningful portion of scanned pages."] : [],
+        strengths:
+          contentScore >= 70
+            ? ["Many pages contain substantial explanatory content and structured sections."]
+            : [],
+        gaps:
+          contentScore < 70
+            ? ["Content appears thin on a meaningful portion of scanned pages."]
+            : [],
         improvements: [
           "Add FAQs and decision content for your main services/offers.",
           "Expand thin pages with concrete details: who it’s for, how it works, proof points, and next steps."
@@ -426,12 +420,34 @@ function score(pages: any[], seedUrl: string, origin: string) {
     }
   };
 
+  // ✅ Knowledge-base recommendations (basic industry best practices)
+  const signals = {
+    titleRate,
+    h1Rate,
+    metaRate,
+    avgText,
+    avgH2,
+    jsonLdRate,
+    canonicalRate,
+    errorRate,
+    answerability: {
+      whatRate: answer.perDim.what.count / answer.perDim.what.total,
+      whoRate: answer.perDim.who.count / answer.perDim.who.total,
+      howRate: answer.perDim.how.count / answer.perDim.how.total,
+      trustRate: answer.perDim.trust.count / answer.perDim.trust.total
+    },
+    usedSitemap
+  };
+
+  const recommendations = buildRecommendations(signals as any);
+
   return {
     grades,
     tier,
     explanations,
+    recommendations,
 
-    // Optional debug fields for tuning later (safe to keep or remove)
+    // Optional debug (remove if you prefer)
     _debug: {
       aiReadinessScore,
       structureScore,
@@ -450,7 +466,7 @@ export async function POST(req: Request) {
     const started = Date.now();
 
     const { pages, scope, origin } = await crawl(url);
-    const scored = score(pages, url, origin);
+    const scored = score(pages, url, origin, scope.usedSitemap);
     const durationMs = Date.now() - started;
 
     return NextResponse.json({

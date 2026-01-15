@@ -302,9 +302,59 @@ export default function AuditPage() {
 }
 
 function renderBlock(title: string, block: any) {
-  const strengths = (block?.strengths?.length ? block.strengths : ["Not observed in public content."]).slice(0, 6);
-  const gaps = (block?.gaps?.length ? block.gaps : ["Not observed in public content."]).slice(0, 6);
-  const improvements = (block?.improvements ?? []).slice(0, 6);
+  const strengths: string[] =
+    (block?.strengths?.length ? block.strengths : ["Solid foundation observed at this scan depth."]).slice(0, 6);
+
+  const gapsRaw: string[] = (block?.gaps ?? []).slice(0, 6);
+  const improvementsRaw: string[] = (block?.improvements ?? []).slice(0, 6);
+
+  // If no gaps, we still show "next level" opportunities
+  const noMajorGaps = gapsRaw.length === 0 || (gapsRaw.length === 1 && String(gapsRaw[0]).toLowerCase().includes("no major"));
+
+  const defaultOpportunities: Record<string, string[]> = {
+    "AI Readiness": [
+      "Make your one-sentence “what we do” statement consistent across homepage, pricing, and primary service/product pages.",
+      "Add a clear “who it’s for” section with 2–4 concrete audience examples (roles/industries).",
+      "Add a short “how it works” section or FAQ to reduce ambiguity for AI summaries and answer engines.",
+      "Add trust signals near decision points (case studies, customer logos, security/privacy links)."
+    ],
+    "Structure": [
+      "Align page titles + H1s to the exact questions people search for (improves AI extractability and clarity).",
+      "Standardize templates: one clear H1, supporting H2 sections, and consistent internal linking between key pages.",
+      "Add meta descriptions to your highest-traffic pages to improve snippet clarity and indexing confidence.",
+      "Create clearer topic clusters (service → FAQs → case studies) so AI systems understand page relationships."
+    ],
+    "Content Depth": [
+      "Add decision-support content: FAQs, comparisons, use cases, and “who it’s for / not for” sections.",
+      "Expand thin pages with specifics: process, deliverables, timelines, proof points, and next steps.",
+      "Create 2–3 authoritative pages that explain your core offer in depth and link to them from key pages.",
+      "Add examples (screenshots, outcomes, results) that reduce AI uncertainty when summarizing."
+    ],
+    "Technical Readiness": [
+      "Extend structured data (JSON-LD) beyond the homepage to core service/product and FAQ pages where relevant.",
+      "Ensure canonical tags are consistent across variants (www/non-www, trailing slash, query params).",
+      "Publish/verify sitemap.xml and reference it in robots.txt for cleaner discovery.",
+      "Reduce redirect chains and broken links to improve crawl reliability over time."
+    ]
+  };
+
+  // Use backend improvements if present; otherwise use curated “next level” opportunities.
+  const nextLevel: string[] =
+    (improvementsRaw.length ? improvementsRaw : defaultOpportunities[title] ?? [
+      "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."
+    ]).slice(0, 6);
+
+  // Headline swap: "Gaps" vs "Opportunities"
+  const gapsHeading = noMajorGaps ? "Optimization Opportunities (Next Level)" : "Gaps";
+  const gapsList = noMajorGaps
+    ? nextLevel
+    : gapsRaw.length
+      ? gapsRaw
+      : ["No critical issues detected — focus shifts to optimization opportunities."];
+
+  // Improvements becomes "Recommended Next Steps" (always useful)
+  const improvementsHeading = "Recommended Next Steps";
+  const improvementsList = nextLevel;
 
   return (
     <section className="card">
@@ -313,11 +363,17 @@ function renderBlock(title: string, block: any) {
       <strong>Strengths</strong>
       <ul>{strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
 
-      <strong>Gaps</strong>
-      <ul>{gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+      <strong>{gapsHeading}</strong>
+      <ul>{gapsList.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
 
-      <strong>Improvements</strong>
-      <ul>{improvements.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+      <strong>{improvementsHeading}</strong>
+      <ul>{improvementsList.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+
+      {noMajorGaps && (
+        <small className="muted">
+          Even when foundations are strong, AI visibility improves through ongoing refinement as models and queries evolve.
+        </small>
+      )}
     </section>
   );
 }

@@ -1,25 +1,48 @@
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import * as cheerio from "cheerio";
+import { XMLParser } from "fast-xml-parser";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const Body = z.object({ url: z.string().url() });
 
-export async function POST(req: Request) {
+function toGrade(score: number) {
+  if (score >= 85) return "A";
+  if (score >= 70) return "B";
+  if (score >= 50) return "C";
+  return "D";
+}
+
+function containsAIText(text: string) {
+  const t = text.toLowerCase();
+  return (
+    t.includes("artificial intelligence") ||
+    t.includes("machine learning") ||
+    t.includes("automation") ||
+    t.includes("ai ")
+  );
+}
+
+async function fetchText(url: string, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const { prompt } = await req.json();
-
-    const resp = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt || 'Say hello' }],
-      temperature: 0.7,
+    const res = await fetch(url, {
+      redirect: "follow",
+      signal: controller.signal,
+      headers: { "user-agent": "GPTO-AuditBot/0.1" }
     });
-
-    const text = resp.choices[0]?.message?.content ?? '';
-    return NextResponse.json({ text });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'AI error' }, { status: 500 });
+    const text = await res.text();
+    return { status: res.status, text };
+  } finally {
+    clearTimeout(t);
   }
 }
+
+async function getSitemapUrls(origin: string, maxPages: number) {
+  try {
+    const { status, text } = await fetchText(`${origin}/sitemap.xml`);
+    if (status >= 400) return null;
+
+    con

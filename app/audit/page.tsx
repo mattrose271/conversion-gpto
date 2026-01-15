@@ -241,7 +241,7 @@ export default function AuditPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
                 {[
-                  ["AI Openness", g.aiOpenness],
+                  ["AI Readiness", g.aiReadiness],
                   ["Structure", g.structure],
                   ["Content Depth", g.contentDepth],
                   ["Technical Readiness", g.technicalReadiness],

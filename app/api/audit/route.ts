@@ -6,7 +6,22 @@ import { XMLParser } from "fast-xml-parser";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const Body = z.object({ url: z.string().url() });
+// ✅ Accepts anything non-empty; we normalize/validate ourselves
+const Body = z.object({ url: z.string().min(1) });
+
+function normalizeInputUrl(input: string) {
+  const raw = input.trim();
+  if (!raw) throw new Error("Missing url");
+
+  // If user pastes "example.com" or "www.example.com", add https://
+  const withScheme =
+    raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+
+  // Validate & normalize
+  const u = new URL(withScheme);
+  u.hash = "";
+  return u.toString();
+}
 
 function toGrade(score: number) {
   if (score >= 85) return "A";
@@ -211,10 +226,13 @@ function score(pages: any[]) {
     (overall === "B" &&
       grades.technicalReadiness !== "D" &&
       grades.contentDepth !== "D")
-  )
+  ) {
     tier = "Gold";
-  else if (overall === "B" || overall === "C") tier = "Silver";
-  else tier = "Bronze";
+  } else if (overall === "B" || overall === "C") {
+    tier = "Silver";
+  } else {
+    tier = "Bronze";
+  }
 
   const explanations = {
     tierWhy:
@@ -268,7 +286,10 @@ function score(pages: any[]) {
           jsonLdRate > 0
             ? [`Structured data (JSON-LD) was observed on ${ok.filter((p) => p.hasJsonLd).length} pages.`]
             : [],
-        gaps: jsonLdRate === 0 ? ["No structured data (JSON-LD schema) was observed on scanned pages."] : [],
+        gaps:
+          jsonLdRate === 0
+            ? ["No structured data (JSON-LD schema) was observed on scanned pages."]
+            : [],
         improvements: [
           "Add schema markup to core pages (Organization, WebSite, FAQ where appropriate).",
           "Ensure canonical tags are consistent and reduce broken/redirect-heavy URLs."
@@ -282,7 +303,9 @@ function score(pages: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const { url } = Body.parse(await req.json());
+    const parsed = Body.parse(await req.json());
+    const url = normalizeInputUrl(parsed.url);
+
     const started = Date.now();
 
     const { pages, scope } = await crawl(url);
@@ -295,6 +318,9 @@ export async function POST(req: Request) {
       ...scored
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Bad request" }, { status: 400 });
+    return NextResponse.json(
+      { error: e?.message || "Bad request" },
+      { status: 400 }
+    );
   }
 }

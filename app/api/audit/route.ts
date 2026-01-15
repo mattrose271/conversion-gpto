@@ -13,11 +13,9 @@ function normalizeInputUrl(input: string) {
   const raw = input.trim();
   if (!raw) throw new Error("Missing url");
 
-  // If user pastes "example.com" or "www.example.com", add https://
   const withScheme =
     raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
 
-  // Validate & normalize
   const u = new URL(withScheme);
   u.hash = "";
   return u.toString();
@@ -30,17 +28,12 @@ function toGrade(score: number) {
   return "D";
 }
 
-function containsAIText(text: string) {
+function hasAny(text: string, phrases: string[]) {
   const t = text.toLowerCase();
-  return (
-    t.includes("artificial intelligence") ||
-    t.includes("machine learning") ||
-    t.includes("automation") ||
-    t.includes("ai ")
-  );
+  return phrases.some((p) => t.includes(p));
 }
 
-async function fetchText(url: string, timeoutMs = 12000) {
+async function fetchText(url: string, timeoutMs = 6000) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -67,7 +60,6 @@ async function getSitemapUrls(origin: string, maxPages: number) {
     const urls: string[] = [];
     const urlsetRaw: any = parsed?.urlset?.url;
 
-    // Normalize to array (handles single <url> or many <url> entries)
     const urlEntries: any[] = Array.isArray(urlsetRaw)
       ? urlsetRaw
       : urlsetRaw
@@ -112,16 +104,18 @@ function summarize(html: string) {
   const h1Count = $("h1").length;
   const h2Count = $("h2").length;
   const hasJsonLd = $('script[type="application/ld+json"]').length > 0;
+
+  // Keep only a slice for safety/perf
   const text = $("body").text().replace(/\s+/g, " ").trim().slice(0, 20000);
 
   return { title, metaDescription, canonical, h1Count, h2Count, hasJsonLd, text };
 }
 
-async function crawl(url: string) {
-  const maxPages = 60;
+async function crawl(seedUrl: string) {
+  const maxPages = 20; // ✅ faster MVP default
   const maxDepth = 2;
 
-  const seed = new URL(url);
+  const seed = new URL(seedUrl);
   const origin = seed.origin;
 
   const sitemapUrls = await getSitemapUrls(origin, maxPages);
@@ -136,18 +130,20 @@ async function crawl(url: string) {
       seen.add(u);
     }
   } else {
-    queue.push({ url, depth: 0 });
-    seen.add(url);
+    queue.push({ url: seedUrl, depth: 0 });
+    seen.add(seedUrl);
   }
 
   const pages: any[] = [];
+  const deadline = Date.now() + 20000; // ✅ hard cap total time
 
   while (queue.length && pages.length < maxPages) {
-    // Small batches to avoid huge request storms
+    if (Date.now() > deadline) break;
+
     const batch = queue.splice(0, Math.min(8, queue.length));
 
-    // Sequential processing (no p-limit)
     for (const item of batch) {
+      if (Date.now() > deadline) break;
       if (pages.length >= maxPages) break;
 
       try {
@@ -174,10 +170,134 @@ async function crawl(url: string) {
     }
   }
 
-  return { pages, scope: { maxPages, scannedPages: pages.length, usedSitemap } };
+  return { pages, scope: { maxPages, scannedPages: pages.length, usedSitemap }, origin };
 }
 
-function score(pages: any[]) {
+/**
+ * ✅ AI Readiness (Answerability) model:
+ * Can an AI accurately answer:
+ *  - what you do
+ *  - who it's for
+ *  - how it works
+ *  - trust/proof signals
+ *
+ * This is NOT "does the site mention AI".
+ */
+function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
+  const n = pagesOk.length || 1;
+
+  // Phrase sets (simple + defensible; can be tuned later)
+  const WHAT = [
+    "we help",
+    "we provide",
+    "we build",
+    "our product",
+    "our platform",
+    "our service",
+    "solution",
+    "software",
+    "platform"
+  ];
+  const WHO = [
+    "for teams",
+    "for businesses",
+    "for customers",
+    "for companies",
+    "for creators",
+    "for developers",
+    "for marketers",
+    "for recruiters",
+    "for enterprises",
+    "for small businesses"
+  ];
+  const HOW = [
+    "how it works",
+    "get started",
+    "workflow",
+    "features",
+    "pricing",
+    "plans",
+    "integrations",
+    "documentation",
+    "api",
+    "steps"
+  ];
+  const TRUST = [
+    "case study",
+    "testimonials",
+    "customers",
+    "trusted by",
+    "security",
+    "privacy",
+    "compliance",
+    "terms",
+    "soc 2",
+    "gdpr"
+  ];
+
+  // Homepage detection
+  const homeCandidates = new Set<string>([
+    seedUrl,
+    origin,
+    `${origin}/`,
+    `${origin}/home`
+  ]);
+  const home = pagesOk.find((p) => homeCandidates.has(p.url));
+
+  function pageText(p: any) {
+    return `${p.title ?? ""} ${p.text ?? ""}`.slice(0, 12000);
+  }
+
+  const counts = {
+    what: 0,
+    who: 0,
+    how: 0,
+    trust: 0
+  };
+
+  for (const p of pagesOk) {
+    const t = pageText(p);
+    if (hasAny(t, WHAT)) counts.what += 1;
+    if (hasAny(t, WHO)) counts.who += 1;
+    if (hasAny(t, HOW)) counts.how += 1;
+    if (hasAny(t, TRUST)) counts.trust += 1;
+  }
+
+  // Target coverage: if a dimension appears on ~35%+ of scanned pages, that's "good coverage"
+  const target = 0.35;
+
+  const dimScore = (count: number) => {
+    const rate = count / n;
+    const normalized = Math.min(1, rate / target);
+    return Math.round(25 * normalized); // each dimension max 25
+  };
+
+  let score =
+    dimScore(counts.what) +
+    dimScore(counts.who) +
+    dimScore(counts.how) +
+    dimScore(counts.trust);
+
+  // Small homepage bonus: if homepage exists and contains core "what" + "how", add up to 6 points
+  if (home) {
+    const ht = pageText(home);
+    const bonus =
+      (hasAny(ht, WHAT) ? 3 : 0) +
+      (hasAny(ht, HOW) ? 3 : 0);
+    score = Math.min(100, score + bonus);
+  }
+
+  const perDim = {
+    what: { count: counts.what, total: n },
+    who: { count: counts.who, total: n },
+    how: { count: counts.how, total: n },
+    trust: { count: counts.trust, total: n }
+  };
+
+  return { score, perDim };
+}
+
+function score(pages: any[], seedUrl: string, origin: string) {
   const ok = pages.filter((p) => p.status > 0 && p.status < 400);
   const n = ok.length || 1;
 
@@ -205,55 +325,72 @@ function score(pages: any[]) {
     45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate)
   );
 
-  // AI openness
-  const aiMentionsRate = ok.filter((p) => containsAIText(p.text || "")).length / n;
-  const aiScore = Math.round(100 * aiMentionsRate);
+  // ✅ AI Readiness = Answerability (overall)
+  const answer = computeAnswerability(ok, seedUrl, origin);
+  const aiReadinessScore = answer.score;
 
   const grades = {
-    aiOpenness: toGrade(aiScore),
+    aiReadiness: toGrade(aiReadinessScore),
     structure: toGrade(structureScore),
     contentDepth: toGrade(contentScore),
-    technicalReadiness: toGrade(technicalScore)
+    technicalReadiness: toGrade(technicalScore),
+
+    // ✅ Overall is the AI Readiness grade (as requested)
+    overall: toGrade(aiReadinessScore)
   };
 
-  const overallScore = (aiScore + structureScore + contentScore + technicalScore) / 4;
-  const overall = toGrade(overallScore);
-
-  // Tier mapping (simple + explainable)
+  // Tier mapping — still considers fundamentals
   let tier: "Bronze" | "Silver" | "Gold";
   if (
-    overall === "A" ||
-    (overall === "B" &&
+    grades.overall === "A" ||
+    (grades.overall === "B" &&
       grades.technicalReadiness !== "D" &&
       grades.contentDepth !== "D")
   ) {
     tier = "Gold";
-  } else if (overall === "B" || overall === "C") {
+  } else if (grades.overall === "B" || grades.overall === "C") {
     tier = "Silver";
   } else {
     tier = "Bronze";
   }
 
+  // ✅ AI Readiness explanations based on missing answerability dimensions
+  const dimLines = (label: string, count: number, total: number) =>
+    `${label} language observed on ${count}/${total} scanned pages.`;
+
+  const aiStrengths: string[] = [];
+  const aiGaps: string[] = [];
+
+  const dims = answer.perDim;
+
+  // Strengths: dimensions with decent coverage
+  if (dims.what.count / dims.what.total >= 0.35) aiStrengths.push(dimLines("Clear “what you do”", dims.what.count, dims.what.total));
+  if (dims.who.count / dims.who.total >= 0.35) aiStrengths.push(dimLines("Clear “who it’s for”", dims.who.count, dims.who.total));
+  if (dims.how.count / dims.how.total >= 0.35) aiStrengths.push(dimLines("Clear “how it works”", dims.how.count, dims.how.total));
+  if (dims.trust.count / dims.trust.total >= 0.35) aiStrengths.push(dimLines("Trust/proof signals", dims.trust.count, dims.trust.total));
+
+  // Gaps: dimensions with weak coverage
+  if (dims.what.count / dims.what.total < 0.2) aiGaps.push("“What you do” is not consistently stated across key pages.");
+  if (dims.who.count / dims.who.total < 0.2) aiGaps.push("“Who it’s for” is unclear or inconsistently stated.");
+  if (dims.how.count / dims.how.total < 0.2) aiGaps.push("High-level “how it works” details are limited or hard to find.");
+  if (dims.trust.count / dims.trust.total < 0.2) aiGaps.push("Trust/proof signals (e.g., customers, case studies, security) are limited or not prominent.");
+
   const explanations = {
     tierWhy:
       tier === "Gold"
-        ? ["Strong overall readiness with solid technical and content foundations; focus on continuous optimization."]
+        ? ["Strong overall AI optimization readiness with solid fundamentals; focus on continuous iteration."]
         : tier === "Silver"
-        ? ["Mixed readiness: good base but clear gaps; prioritize structured content and technical signals."]
-        : ["Fundamentals are weak or missing; focus on baseline clarity and trust signals first."],
+        ? ["Mixed readiness: improve answerability and reinforce fundamentals for consistent AI interpretation."]
+        : ["Baseline readiness is low: prioritize clear, consistent explanations on core pages first."],
     perCategory: {
-      aiOpenness: {
-        strengths:
-          aiScore >= 70
-            ? ["AI/automation language appears across multiple public pages (observable signals)."]
-            : [],
-        gaps:
-          aiScore < 70
-            ? ["Limited or no explicit public AI/automation disclosure signals were observed in scanned pages."]
-            : [],
+      aiReadiness: {
+        strengths: aiStrengths.length ? aiStrengths : ["Answerability signals were limited across scanned pages."],
+        gaps: aiGaps.length ? aiGaps : ["No major answerability gaps detected at this scan depth."],
         improvements: [
-          "Add an AI/automation transparency note or policy page if AI-driven experiences are used.",
-          "Add plain-language explainers (what is automated vs human-reviewed) where applicable."
+          "Add a clear one-paragraph “what we do” statement on the homepage and primary product/service page.",
+          "Add a “who it’s for” section with 2–4 concrete audience examples.",
+          "Add a short “how it works” section or FAQ that explains the workflow in plain language.",
+          "Add trust signals (customer logos, case studies, security/privacy) where appropriate."
         ]
       },
       structure: {
@@ -268,14 +405,8 @@ function score(pages: any[]) {
         ]
       },
       contentDepth: {
-        strengths:
-          contentScore >= 70
-            ? ["Many pages contain substantial explanatory content and structured sections."]
-            : [],
-        gaps:
-          contentScore < 70
-            ? ["Content appears thin on a meaningful portion of scanned pages."]
-            : [],
+        strengths: contentScore >= 70 ? ["Many pages contain substantial explanatory content and structured sections."] : [],
+        gaps: contentScore < 70 ? ["Content appears thin on a meaningful portion of scanned pages."] : [],
         improvements: [
           "Add FAQs and decision content for your main services/offers.",
           "Expand thin pages with concrete details: who it’s for, how it works, proof points, and next steps."
@@ -286,10 +417,7 @@ function score(pages: any[]) {
           jsonLdRate > 0
             ? [`Structured data (JSON-LD) was observed on ${ok.filter((p) => p.hasJsonLd).length} pages.`]
             : [],
-        gaps:
-          jsonLdRate === 0
-            ? ["No structured data (JSON-LD schema) was observed on scanned pages."]
-            : [],
+        gaps: jsonLdRate === 0 ? ["No structured data (JSON-LD schema) was observed on scanned pages."] : [],
         improvements: [
           "Add schema markup to core pages (Organization, WebSite, FAQ where appropriate).",
           "Ensure canonical tags are consistent and reduce broken/redirect-heavy URLs."
@@ -298,7 +426,20 @@ function score(pages: any[]) {
     }
   };
 
-  return { grades: { ...grades, overall }, tier, explanations };
+  return {
+    grades,
+    tier,
+    explanations,
+
+    // Optional debug fields for tuning later (safe to keep or remove)
+    _debug: {
+      aiReadinessScore,
+      structureScore,
+      contentScore,
+      technicalScore,
+      answerabilityDims: answer.perDim
+    }
+  };
 }
 
 export async function POST(req: Request) {
@@ -308,8 +449,8 @@ export async function POST(req: Request) {
 
     const started = Date.now();
 
-    const { pages, scope } = await crawl(url);
-    const scored = score(pages);
+    const { pages, scope, origin } = await crawl(url);
+    const scored = score(pages, url, origin);
     const durationMs = Date.now() - started;
 
     return NextResponse.json({
@@ -318,9 +459,6 @@ export async function POST(req: Request) {
       ...scored
     });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message || "Bad request" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: e?.message || "Bad request" }, { status: 400 });
   }
 }

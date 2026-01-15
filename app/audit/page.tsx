@@ -281,7 +281,7 @@ export default function AuditPage() {
           </div>
 
           {/* EXPLANATIONS */}
-          {renderBlock("AI Openness", report.explanations?.perCategory?.aiOpenness)}
+          {renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
           {renderBlock("Structure", report.explanations?.perCategory?.structure)}
           {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
           {renderBlock("Technical Readiness", report.explanations?.perCategory?.technicalReadiness)}

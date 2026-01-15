@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
         <Text style={{ fontSize: 13, marginTop: 10, marginBottom: 6 }}>Scorecard</Text>
         {[
-          ["AI Openness", report.grades.aiOpenness],
+         ["AI Readiness", report.grades.aiReadiness],
           ["Structure", report.grades.structure],
           ["Content Depth", report.grades.contentDepth],
           ["Technical Readiness", report.grades.technicalReadiness],

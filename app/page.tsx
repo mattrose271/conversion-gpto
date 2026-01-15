@@ -96,9 +96,9 @@ export default function Page(){
         <div className="container">
           <h2>Plans & Pricing</h2>
           <div className="grid cols-3">
-            <Price name="Starter" price="$499" features={["TruthSeeker","Authority Grove (manual)","Telemetry light","50 geo‑nodes"]} priceId={process.env.NEXT_PUBLIC_PRICE_STARTER as any || ''} />
-            <Price name="Growth" price="$999" features={["500‑city JSON","AGCC 10‑pack","AutoFill","Dashboard basic"]} priceId={process.env.NEXT_PUBLIC_PRICE_GROWTH as any || ''} />
-            <Price name="Pro" price="$2000+" features={["Display Ads","Partner Lattice","Reputation Console","API access"]} priceId={process.env.NEXT_PUBLIC_PRICE_PRO as any || ''} />
+            <Price name="Starter" price="$999 per month" features={["TruthSeeker","Authority Grove (manual)","Telemetry light","50 geo‑nodes"]} priceId={process.env.NEXT_PUBLIC_PRICE_STARTER as any || ''} />
+            <Price name="Growth" price="$2499 per month" features={["500‑city JSON","AGCC 10‑pack","AutoFill","Dashboard basic"]} priceId={process.env.NEXT_PUBLIC_PRICE_GROWTH as any || ''} />
+            <Price name="Pro" price="$4999 per month+" features={["Display Ads","Partner Lattice","Reputation Console","API access"]} priceId={process.env.NEXT_PUBLIC_PRICE_PRO as any || ''} />
           </div>
           <small className="muted">Purchases redirect to Stripe Checkout. A confirmation email is sent on completion.</small>
         </div>

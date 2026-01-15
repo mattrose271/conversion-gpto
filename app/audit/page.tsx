@@ -40,7 +40,14 @@ export default function AuditPage() {
         Paste a website URL to generate a scorecard + PDF download.
       </p>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+      {/* ✅ Enter key submits + button click submits */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!loading && url.trim()) run();
+        }}
+        style={{ display: "flex", gap: 10, marginTop: 14 }}
+      >
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -55,8 +62,8 @@ export default function AuditPage() {
           }}
         />
         <button
-          onClick={run}
-          disabled={loading || !url}
+          type="submit"
+          disabled={loading || !url.trim()}
           style={{
             padding: "14px 18px",
             borderRadius: 12,
@@ -69,7 +76,7 @@ export default function AuditPage() {
         >
           {loading ? "Running…" : "Generate"}
         </button>
-      </div>
+      </form>
 
       {error && <p style={{ marginTop: 14, color: "#ffb4b4" }}>{error}</p>}
 
@@ -110,7 +117,15 @@ export default function AuditPage() {
               </tbody>
             </table>
 
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 12, alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                marginTop: 12,
+                alignItems: "center"
+              }}
+            >
               <div>
                 <div style={{ fontWeight: 900 }}>Recommended GPTO Tier: {report.tier}</div>
                 <div style={{ opacity: 0.8, fontSize: 13 }}>

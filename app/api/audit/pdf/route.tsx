@@ -3,6 +3,7 @@ import React from "react";
 import { renderToBuffer, Document, Page, Text, View } from "@react-pdf/renderer";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing url" }, { status: 400 });
   }
 
-  // ✅ Call the audit endpoint (no direct imports)
+  // Call the audit endpoint (no direct imports)
   const auditRes = await fetch(new URL("/api/audit", req.url), {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -40,7 +41,10 @@ export async function GET(req: Request) {
           ["Technical Readiness", report.grades.technicalReadiness],
           ["Overall", report.grades.overall]
         ].map(([k, v]) => (
-          <View key={String(k)} style={{ flexDirection: "row", borderBottomWidth: 1, paddingVertical: 6 }}>
+          <View
+            key={String(k)}
+            style={{ flexDirection: "row", borderBottomWidth: 1, paddingVertical: 6 }}
+          >
             <Text style={{ width: "70%" }}>{String(k)}</Text>
             <Text style={{ width: "30%", textAlign: "right" }}>{String(v)}</Text>
           </View>
@@ -52,15 +56,9 @@ export async function GET(req: Request) {
         <Text style={{ fontSize: 13, marginTop: 12, marginBottom: 6 }}>Scope</Text>
         <Text style={{ color: "#666" }}>
           Scanned {report.scope?.scannedPages} pages (max {report.scope?.maxPages}) •{" "}
-          {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"} • {Math.round((report.scope?.durationMs ?? 0) / 1000)}s
+          {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"} •{" "}
+          {Math.round((report.scope?.durationMs ?? 0) / 1000)}s
         </Text>
-
-        {/* Optional: include tier why */}
-        {(report.explanations?.tierWhy ?? []).slice(0, 2).map((t: string, i: number) => (
-          <Text key={i} style={{ marginTop: 6 }}>
-            • {t}
-          </Text>
-        ))}
       </Page>
     </Document>
   );

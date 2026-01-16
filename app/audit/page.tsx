@@ -149,7 +149,7 @@ export default function AuditPage() {
         .segRow::-webkit-scrollbar { display: none; }
         .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
 
-        /* Prevent long sections (esp. Technical clarity) from clipping on mobile */
+        /* Prevent long sections (esp. Technical Clarity) from clipping on mobile */
         .auditBlock {
           height: auto !important;
           max-height: none !important;
@@ -274,7 +274,7 @@ export default function AuditPage() {
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
           <h1>
-            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> clarity Audit
+            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Clarity Audit
           </h1>
           <p style={{ maxWidth: 720 }}>
             Paste a website URL to generate a scorecard + PDF download.
@@ -325,10 +325,10 @@ export default function AuditPage() {
                   <table className="auditTable">
                     <tbody>
                       {[
-                        ["AI clarity", g.aiclarity],
+                        ["AI Clarity", g.aiClarity],
                         ["Structure", g.structure],
                         ["Content Depth", g.contentDepth],
-                        ["Technical clarity", g.technicalclarity],
+                        ["Technical Clarity", g.technicalClarity],
                         ["Overall", g.overall]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
@@ -363,7 +363,7 @@ export default function AuditPage() {
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
                   <ul style={{ marginBottom: 0 }}>
                     <li>
-                      <strong>AI clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
+                      <strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
                     </li>
                     <li>
                       <strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.
@@ -372,7 +372,7 @@ export default function AuditPage() {
                       <strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.
                     </li>
                     <li>
-                      <strong>Technical clarity:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
+                      <strong>Technical Clarity:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
                     </li>
                   </ul>
                   <small className="muted">Based on observable signals from scanned public pages.</small>
@@ -384,12 +384,12 @@ export default function AuditPage() {
               {/* Desktop: show all four */}
               <div className="desktopOnly">
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
-                  {renderBlock("AI clarity", report.explanations?.perCategory?.aiclarity)}
+                  {renderBlock("AI Clarity", report.explanations?.perCategory?.aiClarity)}
                   {renderBlock("Structure", report.explanations?.perCategory?.structure)}
                 </div>
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
                   {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {renderBlock("Technical clarity", report.explanations?.perCategory?.technicalclarity)}
+                  {renderBlock("Technical Clarity", report.explanations?.perCategory?.technicalClarity)}
                 </div>
               </div>
 
@@ -429,13 +429,13 @@ export default function AuditPage() {
 
                 <div className="swipeArea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                   {activeSection === 0 &&
-                    renderBlock("AI clarity", report.explanations?.perCategory?.aiclarity)}
+                    renderBlock("AI Clarity", report.explanations?.perCategory?.aiClarity)}
                   {activeSection === 1 &&
                     renderBlock("Structure", report.explanations?.perCategory?.structure)}
                   {activeSection === 2 &&
                     renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
                   {activeSection === 3 &&
-                    renderBlock("Technical clarity", report.explanations?.perCategory?.technicalclarity)}
+                    renderBlock("Technical Clarity", report.explanations?.perCategory?.technicalClarity)}
                 </div>
               </div>
             </>
@@ -467,16 +467,16 @@ function renderBlock(title: string, block: any) {
   const improvementsRaw: string[] = (block?.improvements ?? []).slice(0, 6);
 
   const defaultOpportunities: Record<string, string[]> = {
-    "AI clarity": [
+    "AI Clarity": [
       "Make your one-sentence “what we do” statement consistent across homepage, pricing, and primary service/product pages.",
       "Add a clear “who it’s for” section with 2–4 concrete audience examples (roles/industries).",
       "Add a short “how it works” section or FAQ to reduce ambiguity for AI summaries and answer engines.",
       "Add trust signals near decision points (case studies, customer logos, security/privacy links)."
     ],
     "Structure": [
-      "Align page titles + H1s to the exact questions people search for (improves AI extractability and clarity).",
+      "Align page titles + H1s to the exact questions people search for (improves AI extractability and Clarity).",
       "Standardize templates: one clear H1, supporting H2s, and consistent internal linking between key pages.",
-      "Add meta descriptions to your highest-traffic pages to improve snippet clarity and indexing confidence.",
+      "Add meta descriptions to your highest-traffic pages to improve snippet Clarity and indexing confidence.",
       "Create clearer topic clusters (service → FAQs → case studies) so AI systems understand page relationships."
     ],
     "Content Depth": [
@@ -485,7 +485,7 @@ function renderBlock(title: string, block: any) {
       "Create 2–3 authoritative pages that explain your core offer in depth and link to them from key pages.",
       "Add examples (screenshots, outcomes, results) that reduce AI uncertainty when summarizing."
     ],
-    "Technical clarity": [
+    "Technical Clarity": [
       "Extend structured data (JSON-LD) beyond the homepage to core service/product and FAQ pages where relevant.",
       "Ensure canonical tags are consistent across variants (www/non-www, trailing slash, query params).",
       "Publish/verify sitemap.xml and reference it in robots.txt for cleaner discovery.",
@@ -495,7 +495,7 @@ function renderBlock(title: string, block: any) {
 
   const nextLevel: string[] =
     (improvementsRaw.length ? improvementsRaw : defaultOpportunities[title] ?? [
-      "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."
+      "Even strong sites benefit from ongoing AI optimization: refine Clarity, consistency, and machine-readability across more pages."
     ]).slice(0, 6);
 
   const hasGaps =

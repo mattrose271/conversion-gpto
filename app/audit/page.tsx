@@ -149,7 +149,7 @@ export default function AuditPage() {
         .segRow::-webkit-scrollbar { display: none; }
         .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
 
-        /* Prevent long sections (esp. Technical Readiness) from clipping on mobile */
+        /* Prevent long sections (esp. Technical clarity) from clipping on mobile */
         .auditBlock {
           height: auto !important;
           max-height: none !important;
@@ -274,7 +274,7 @@ export default function AuditPage() {
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
           <h1>
-            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Readiness Audit
+            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> clarity Audit
           </h1>
           <p style={{ maxWidth: 720 }}>
             Paste a website URL to generate a scorecard + PDF download.
@@ -325,10 +325,10 @@ export default function AuditPage() {
                   <table className="auditTable">
                     <tbody>
                       {[
-                        ["AI Readiness", g.aiReadiness],
+                        ["AI clarity", g.aiclarity],
                         ["Structure", g.structure],
                         ["Content Depth", g.contentDepth],
-                        ["Technical Readiness", g.technicalReadiness],
+                        ["Technical clarity", g.technicalclarity],
                         ["Overall", g.overall]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
@@ -363,7 +363,7 @@ export default function AuditPage() {
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
                   <ul style={{ marginBottom: 0 }}>
                     <li>
-                      <strong>AI Readiness:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
+                      <strong>AI clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
                     </li>
                     <li>
                       <strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.
@@ -372,7 +372,7 @@ export default function AuditPage() {
                       <strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.
                     </li>
                     <li>
-                      <strong>Technical Readiness:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
+                      <strong>Technical clarity:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
                     </li>
                   </ul>
                   <small className="muted">Based on observable signals from scanned public pages.</small>
@@ -384,12 +384,12 @@ export default function AuditPage() {
               {/* Desktop: show all four */}
               <div className="desktopOnly">
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
-                  {renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
+                  {renderBlock("AI clarity", report.explanations?.perCategory?.aiclarity)}
                   {renderBlock("Structure", report.explanations?.perCategory?.structure)}
                 </div>
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
                   {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {renderBlock("Technical Readiness", report.explanations?.perCategory?.technicalReadiness)}
+                  {renderBlock("Technical clarity", report.explanations?.perCategory?.technicalclarity)}
                 </div>
               </div>
 
@@ -429,13 +429,13 @@ export default function AuditPage() {
 
                 <div className="swipeArea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                   {activeSection === 0 &&
-                    renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
+                    renderBlock("AI clarity", report.explanations?.perCategory?.aiclarity)}
                   {activeSection === 1 &&
                     renderBlock("Structure", report.explanations?.perCategory?.structure)}
                   {activeSection === 2 &&
                     renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
                   {activeSection === 3 &&
-                    renderBlock("Technical Readiness", report.explanations?.perCategory?.technicalReadiness)}
+                    renderBlock("Technical clarity", report.explanations?.perCategory?.technicalclarity)}
                 </div>
               </div>
             </>
@@ -467,7 +467,7 @@ function renderBlock(title: string, block: any) {
   const improvementsRaw: string[] = (block?.improvements ?? []).slice(0, 6);
 
   const defaultOpportunities: Record<string, string[]> = {
-    "AI Readiness": [
+    "AI clarity": [
       "Make your one-sentence “what we do” statement consistent across homepage, pricing, and primary service/product pages.",
       "Add a clear “who it’s for” section with 2–4 concrete audience examples (roles/industries).",
       "Add a short “how it works” section or FAQ to reduce ambiguity for AI summaries and answer engines.",
@@ -485,7 +485,7 @@ function renderBlock(title: string, block: any) {
       "Create 2–3 authoritative pages that explain your core offer in depth and link to them from key pages.",
       "Add examples (screenshots, outcomes, results) that reduce AI uncertainty when summarizing."
     ],
-    "Technical Readiness": [
+    "Technical clarity": [
       "Extend structured data (JSON-LD) beyond the homepage to core service/product and FAQ pages where relevant.",
       "Ensure canonical tags are consistent across variants (www/non-www, trailing slash, query params).",
       "Publish/verify sitemap.xml and reference it in robots.txt for cleaner discovery.",

@@ -10,20 +10,15 @@ export default function AuditPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Mobile slider active section
   const [activeSection, setActiveSection] = useState<0 | 1 | 2 | 3>(0);
-
-  // Touch swipe handling
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
-  // Progress bar state (estimated)
   const [progress, setProgress] = useState(0);
   const progressRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (loading) {
       setProgress(8);
-
       if (progressRef.current) window.clearInterval(progressRef.current);
 
       progressRef.current = window.setInterval(() => {
@@ -51,7 +46,6 @@ export default function AuditPage() {
   function goPrev() {
     setActiveSection((s) => ((s + 3) % 4) as 0 | 1 | 2 | 3);
   }
-
   function goNext() {
     setActiveSection((s) => ((s + 1) % 4) as 0 | 1 | 2 | 3);
   }
@@ -72,15 +66,12 @@ export default function AuditPage() {
 
     touchStartRef.current = null;
 
-    // Ignore long presses / slow drags
     if (dt > 900) return;
+    if (Math.abs(dx) < 55) return;
+    if (Math.abs(dy) > 80) return;
 
-    // Must be mostly horizontal
-    if (Math.abs(dx) < 55) return; // swipe threshold
-    if (Math.abs(dy) > 80) return; // too vertical
-
-    if (dx < 0) goNext(); // swipe left
-    else goPrev(); // swipe right
+    if (dx < 0) goNext();
+    else goPrev();
   }
 
   async function run() {
@@ -100,11 +91,8 @@ export default function AuditPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Audit failed");
 
-      // Finish bar, then reveal content
       setProgress(100);
       setReport(data);
-
-      // Reset mobile slider to first section on each new report
       setActiveSection(0);
 
       setTimeout(() => {
@@ -118,7 +106,16 @@ export default function AuditPage() {
     }
   }
 
-  const g = report?.grades;
+  const scores = report?.scores;
+  const grades = report?.grades;
+
+  function fmt(label: string, scoreKey: string, gradeKey: string) {
+    const s = scores?.[scoreKey];
+    const g = grades?.[gradeKey];
+    if (typeof s === "number" && typeof g === "string") return `${s} / 100 (${g})`;
+    if (typeof g === "string") return g;
+    return "—";
+  }
 
   return (
     <div>
@@ -129,18 +126,15 @@ export default function AuditPage() {
           100% { transform: translateX(160%); opacity: 0.0; }
         }
 
-        /* --- Responsive helpers --- */
         .mobileOnly { display: none; }
         .desktopOnly { display: block; }
 
-        /* Scorecard table styles */
         .auditTable { width: 100%; border-collapse: collapse; }
         .auditTable td { padding: 10px 6px; vertical-align: top; }
         .auditTable tr { border-bottom: 1px solid rgba(0,0,0,.08); }
         .auditLabel { font-weight: 800; }
         .auditValue { text-align: right; font-weight: 900; }
 
-        /* “Report sections” pills */
         .segRow {
           display: flex;
           gap: 8px;
@@ -151,53 +145,37 @@ export default function AuditPage() {
         .segRow::-webkit-scrollbar { display: none; }
         .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
 
-        /* Prevent long sections (esp. Technical Readiness) from clipping on mobile */
         .auditBlock {
           height: auto !important;
           max-height: none !important;
           overflow: visible !important;
         }
 
-        /* Let iPhone scroll vertically while we still detect horizontal swipes */
-        .swipeArea {
-          touch-action: pan-y;
-        }
+        .swipeArea { touch-action: pan-y; }
 
-        /* Make cards and content fit small phones cleanly */
         @media (max-width: 900px) {
           .mobileOnly { display: block; }
           .desktopOnly { display: none; }
 
-          /* Ensure your brand grid never stays 2-col on iPhone */
           .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr !important; }
-
-          /* Tighter paddings */
           .container { padding-left: 16px !important; padding-right: 16px !important; }
-
-          /* Make hero headings wrap nicely */
           h1 { font-size: 34px !important; line-height: 1.05 !important; }
 
-          /* Form should stack cleanly */
           .auditForm { flex-direction: column !important; align-items: stretch !important; }
           .auditForm input { width: 100% !important; min-width: 0 !important; }
           .auditForm .btn, .auditForm .btn.alt { width: 100% !important; text-align: center !important; }
 
-          /* Scorecard + Meaning cards stack */
           .scoreRow { display: grid !important; grid-template-columns: 1fr !important; gap: 12px !important; }
-
-          /* Table stays readable on very narrow screens */
           .auditLabel { font-size: 15px !important; }
           .auditValue { font-size: 15px !important; }
         }
 
-        /* Ultra-small iPhones */
         @media (max-width: 380px) {
           h1 { font-size: 30px !important; }
           .auditTable td { padding: 8px 4px; }
         }
       `}</style>
 
-      {/* Full-screen overlay while generating */}
       {loading && (
         <div
           style={{
@@ -269,7 +247,6 @@ export default function AuditPage() {
         </div>
       )}
 
-      {/* Branded hero */}
       <section className="hero">
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
@@ -286,13 +263,7 @@ export default function AuditPage() {
               e.preventDefault();
               if (!loading && url.trim()) run();
             }}
-            style={{
-              display: "flex",
-              gap: 12,
-              marginTop: 12,
-              flexWrap: "wrap",
-              alignItems: "center"
-            }}
+            style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}
           >
             <input
               value={url}
@@ -313,7 +284,6 @@ export default function AuditPage() {
         </div>
       </section>
 
-      {/* Results */}
       <section className="section">
         <div className="container">
           {report ? (
@@ -323,22 +293,18 @@ export default function AuditPage() {
                 {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"}
               </div>
 
-              {/* Scorecard + Meaning */}
-              <div
-                className="scoreRow"
-                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
-              >
+              <div className="scoreRow" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
 
                   <table className="auditTable">
                     <tbody>
                       {[
-                        ["AI Clarity", g.aiReadiness],
-                        ["Structure", g.structure],
-                        ["Content Depth", g.contentDepth],
-                        ["Technical", g.technicalReadiness],
-                        ["Overall", g.overall]
+                        ["AI Clarity", fmt("AI Clarity", "aiReadiness", "aiReadiness")],
+                        ["Structure", fmt("Structure", "structure", "structure")],
+                        ["Content Depth", fmt("Content Depth", "contentDepth", "contentDepth")],
+                        ["Technical", fmt("Technical", "technicalReadiness", "technicalReadiness")],
+                        ["Overall", fmt("Overall", "overall", "overall")]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
                           <td className="auditLabel">{k as string}</td>
@@ -358,10 +324,7 @@ export default function AuditPage() {
                     </div>
 
                     <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-                      <a
-                        className="btn"
-                        href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}
-                      >
+                      <a className="btn" href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}>
                         Download PDF
                       </a>
                       <a className="btn alt" href="#details">
@@ -374,18 +337,10 @@ export default function AuditPage() {
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
                   <ul style={{ marginBottom: 0 }}>
-                    <li>
-                      <strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
-                    </li>
-                    <li>
-                      <strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.
-                    </li>
-                    <li>
-                      <strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.
-                    </li>
-                    <li>
-                      <strong>Technical:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
-                    </li>
+                    <li><strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.</li>
+                    <li><strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.</li>
+                    <li><strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.</li>
+                    <li><strong>Technical:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.</li>
                   </ul>
                   <small className="muted">Based on observable signals from scanned public pages.</small>
                 </div>
@@ -393,7 +348,6 @@ export default function AuditPage() {
 
               <div id="details" />
 
-              {/* Desktop: show all four */}
               <div className="desktopOnly">
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
                   {renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
@@ -405,7 +359,6 @@ export default function AuditPage() {
                 </div>
               </div>
 
-              {/* Mobile: slider + swipe */}
               <div className="mobileOnly" style={{ marginTop: 16 }}>
                 <div className="card" style={{ marginBottom: 12 }}>
                   <strong style={{ display: "block", marginBottom: 10 }}>Report Sections</strong>
@@ -428,26 +381,18 @@ export default function AuditPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <button className="btn alt" type="button" onClick={goPrev}>
-                      ← Prev
-                    </button>
-                    <button className="btn" type="button" onClick={goNext}>
-                      Next →
-                    </button>
+                    <button className="btn alt" type="button" onClick={goPrev}>← Prev</button>
+                    <button className="btn" type="button" onClick={goNext}>Next →</button>
                   </div>
 
                   <div className="sectionHint">Tip: Swipe left/right on the section below.</div>
                 </div>
 
                 <div className="swipeArea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-                  {activeSection === 0 &&
-                    renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
-                  {activeSection === 1 &&
-                    renderBlock("Structure", report.explanations?.perCategory?.structure)}
-                  {activeSection === 2 &&
-                    renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {activeSection === 3 &&
-                    renderBlock("Technical", report.explanations?.perCategory?.technicalReadiness)}
+                  {activeSection === 0 && renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
+                  {activeSection === 1 && renderBlock("Structure", report.explanations?.perCategory?.structure)}
+                  {activeSection === 2 && renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
+                  {activeSection === 3 && renderBlock("Technical", report.explanations?.perCategory?.technicalReadiness)}
                 </div>
               </div>
             </>

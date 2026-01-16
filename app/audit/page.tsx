@@ -10,6 +10,12 @@ export default function AuditPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Mobile slider active section
+  const [activeSection, setActiveSection] = useState<0 | 1 | 2 | 3>(0);
+
+  // Touch swipe handling
+  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+
   // Progress bar state (estimated)
   const [progress, setProgress] = useState(0);
   const progressRef = useRef<number | null>(null);
@@ -42,6 +48,40 @@ export default function AuditPage() {
     };
   }, [loading]);
 
+  function goPrev() {
+    setActiveSection((s) => ((s + 3) % 4) as 0 | 1 | 2 | 3);
+  }
+  function goNext() {
+    setActiveSection((s) => ((s + 1) % 4) as 0 | 1 | 2 | 3);
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touchStartRef.current;
+    if (!start) return;
+
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const dt = Date.now() - start.t;
+
+    touchStartRef.current = null;
+
+    // Ignore long presses / slow drags
+    if (dt > 900) return;
+
+    // Must be mostly horizontal
+    if (Math.abs(dx) < 55) return; // swipe threshold
+    if (Math.abs(dy) > 80) return; // too vertical
+
+    if (dx < 0) goNext(); // swipe left
+    else goPrev(); // swipe right
+  }
+
   async function run() {
     if (loading) return;
 
@@ -61,6 +101,9 @@ export default function AuditPage() {
       // Finish bar, then reveal content
       setProgress(100);
       setReport(data);
+
+      // Reset mobile slider to first section on each new report
+      setActiveSection(0);
 
       setTimeout(() => {
         setLoading(false);
@@ -85,7 +128,29 @@ export default function AuditPage() {
         }
         .auditTable td { padding: 10px 6px; }
         .auditTable tr { border-bottom: 1px solid rgba(0,0,0,.08); }
-        /* If your theme is dark via brand.css, these still look good; if not, they remain readable. */
+
+        .mobileOnly { display: none; }
+        .desktopOnly { display: block; }
+
+        @media (max-width: 900px) {
+          .mobileOnly { display: block; }
+          .desktopOnly { display: none; }
+        }
+
+        .segRow {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 6px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .segRow::-webkit-scrollbar { display: none; }
+
+        .sectionHint {
+          font-size: 12px;
+          opacity: 0.7;
+          margin-top: 8px;
+        }
       `}</style>
 
       {/* Full-screen overlay while generating */}
@@ -156,9 +221,7 @@ export default function AuditPage() {
               <div className="muted" style={{ fontSize: 12 }}>
                 Estimated progress
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {Math.min(progress, 100)}%
-              </div>
+              <div style={{ fontSize: 12, fontWeight: 800 }}>{Math.min(progress, 100)}%</div>
             </div>
           </div>
         </div>
@@ -171,9 +234,7 @@ export default function AuditPage() {
           <h1>
             GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Readiness Audit
           </h1>
-          <p style={{ maxWidth: 720 }}>
-            Paste a website URL to generate a scorecard + PDF download.
-          </p>
+          <p style={{ maxWidth: 720 }}>Paste a website URL to generate a scorecard + PDF download.</p>
 
           {/* Input + Generate (branded) */}
           <form
@@ -236,17 +297,15 @@ export default function AuditPage() {
 
                   <div style={{ marginTop: 12 }}>
                     <div style={{ fontWeight: 900 }}>
-                      Recommended GPTO Tier: <span style={{ color: "var(--brand-red)" }}>{report.tier}</span>
+                      Recommended GPTO Tier:{" "}
+                      <span style={{ color: "var(--brand-red)" }}>{report.tier}</span>
                     </div>
                     <div className="muted" style={{ marginTop: 6 }}>
                       {(report.explanations?.tierWhy ?? []).slice(0, 2).join(" ")}
                     </div>
 
                     <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-                      <a
-                        className="btn"
-                        href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}
-                      >
+                      <a className="btn" href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}>
                         Download PDF
                       </a>
                       <a className="btn alt" href="#details">
@@ -256,46 +315,100 @@ export default function AuditPage() {
                   </div>
                 </div>
 
-                {/* One-line explanations (optional placeholder area if you want) */}
+                {/* One-line explanations */}
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
                   <ul>
-                    <li><strong>AI Readiness:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.</li>
-                    <li><strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.</li>
-                    <li><strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.</li>
-                    <li><strong>Technical Readiness:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.</li>
+                    <li>
+                      <strong>AI Readiness:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
+                    </li>
+                    <li>
+                      <strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.
+                    </li>
+                    <li>
+                      <strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.
+                    </li>
+                    <li>
+                      <strong>Technical Readiness:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
+                    </li>
                   </ul>
-                  <small className="muted">
-                    These are based on observable signals from scanned public pages.
-                  </small>
+                  <small className="muted">These are based on observable signals from scanned public pages.</small>
                 </div>
               </div>
 
               <div id="details" />
 
-              {/* Detail blocks */}
-              <div className="grid cols-2" style={{ marginTop: 16 }}>
-                {renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
-                {renderBlock("Structure", report.explanations?.perCategory?.structure)}
+              {/* Desktop: show all four */}
+              <div className="desktopOnly">
+                <div className="grid cols-2" style={{ marginTop: 16 }}>
+                  {renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
+                  {renderBlock("Structure", report.explanations?.perCategory?.structure)}
+                </div>
+                <div className="grid cols-2" style={{ marginTop: 16 }}>
+                  {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
+                  {renderBlock("Technical Readiness", report.explanations?.perCategory?.technicalReadiness)}
+                </div>
               </div>
-              <div className="grid cols-2" style={{ marginTop: 16 }}>
-                {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                {renderBlock("Technical Readiness", report.explanations?.perCategory?.technicalReadiness)}
+
+              {/* Mobile: slider + swipe */}
+              <div className="mobileOnly" style={{ marginTop: 16 }}>
+                <div className="card" style={{ marginBottom: 12 }}>
+                  <strong style={{ display: "block", marginBottom: 10 }}>Report Sections</strong>
+
+                  <div className="segRow">
+                    {["AI Readiness", "Structure", "Content Depth", "Technical"].map((label, idx) => {
+                      const isActive = activeSection === idx;
+                      return (
+                        <button
+                          key={label}
+                          className={`btn ${isActive ? "" : "alt"}`}
+                          style={{ whiteSpace: "nowrap" }}
+                          onClick={() => setActiveSection(idx as 0 | 1 | 2 | 3)}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                    <button className="btn alt" type="button" onClick={goPrev}>
+                      ← Prev
+                    </button>
+                    <button className="btn" type="button" onClick={goNext}>
+                      Next →
+                    </button>
+                  </div>
+
+                  <div className="sectionHint">Tip: Swipe left/right on the section below.</div>
+                </div>
+
+                <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+                  {activeSection === 0 &&
+                    renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
+                  {activeSection === 1 &&
+                    renderBlock("Structure", report.explanations?.perCategory?.structure)}
+                  {activeSection === 2 &&
+                    renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
+                  {activeSection === 3 &&
+                    renderBlock("Technical Readiness", report.explanations?.perCategory?.technicalReadiness)}
+                </div>
               </div>
             </>
           ) : (
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Run an audit</h3>
-              <p className="muted">
-                Enter a domain above and click Generate. You’ll get a scorecard and a PDF download.
-              </p>
+              <p className="muted">Enter a domain above and click Generate. You’ll get a scorecard and a PDF download.</p>
             </div>
           )}
         </div>
       </section>
 
       <footer className="footer">
-        <div className="container">© {new Date().getFullYear()} Conversion Interactive Agency — All rights reserved.</div>
+        <div className="container">
+          © {new Date().getFullYear()} Conversion Interactive Agency — All rights reserved.
+        </div>
       </footer>
     </div>
   );
@@ -308,9 +421,6 @@ function renderBlock(title: string, block: any) {
   const gapsRaw: string[] = (block?.gaps ?? []).slice(0, 6);
   const improvementsRaw: string[] = (block?.improvements ?? []).slice(0, 6);
 
-  // If no gaps, we still show "next level" opportunities
-  const noMajorGaps = gapsRaw.length === 0 || (gapsRaw.length === 1 && String(gapsRaw[0]).toLowerCase().includes("no major"));
-
   const defaultOpportunities: Record<string, string[]> = {
     "AI Readiness": [
       "Make your one-sentence “what we do” statement consistent across homepage, pricing, and primary service/product pages.",
@@ -320,7 +430,7 @@ function renderBlock(title: string, block: any) {
     ],
     "Structure": [
       "Align page titles + H1s to the exact questions people search for (improves AI extractability and clarity).",
-      "Standardize templates: one clear H1, supporting H2 sections, and consistent internal linking between key pages.",
+      "Standardize templates: one clear H1, supporting H2s, and consistent internal linking between key pages.",
       "Add meta descriptions to your highest-traffic pages to improve snippet clarity and indexing confidence.",
       "Create clearer topic clusters (service → FAQs → case studies) so AI systems understand page relationships."
     ],
@@ -338,23 +448,15 @@ function renderBlock(title: string, block: any) {
     ]
   };
 
-  // Use backend improvements if present; otherwise use curated “next level” opportunities.
+  // Always show next-level opportunities; prefer backend improvements if present
   const nextLevel: string[] =
     (improvementsRaw.length ? improvementsRaw : defaultOpportunities[title] ?? [
       "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."
     ]).slice(0, 6);
 
-  // Headline swap: "Gaps" vs "Opportunities"
-  const gapsHeading = noMajorGaps ? "Optimization Opportunities (Next Level)" : "Gaps";
-  const gapsList = noMajorGaps
-    ? nextLevel
-    : gapsRaw.length
-      ? gapsRaw
-      : ["No critical issues detected — focus shifts to optimization opportunities."];
-
-  // Improvements becomes "Recommended Next Steps" (always useful)
-  const improvementsHeading = "Recommended Next Steps";
-  const improvementsList = nextLevel;
+  const hasGaps =
+    gapsRaw.length > 0 &&
+    !(gapsRaw.length === 1 && String(gapsRaw[0]).toLowerCase().includes("no major"));
 
   return (
     <section className="card">
@@ -363,13 +465,20 @@ function renderBlock(title: string, block: any) {
       <strong>Strengths</strong>
       <ul>{strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
 
-      <strong>{gapsHeading}</strong>
-      <ul>{gapsList.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+      {hasGaps && (
+        <>
+          <strong>Gaps</strong>
+          <ul>{gapsRaw.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+        </>
+      )}
 
-      <strong>{improvementsHeading}</strong>
-      <ul>{improvementsList.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+      <strong>Optimization Opportunities (Next Level)</strong>
+      <ul>{nextLevel.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
 
-      {noMajorGaps && (
+      <strong>Recommended Next Steps</strong>
+      <ul>{nextLevel.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+
+      {!hasGaps && (
         <small className="muted">
           Even when foundations are strong, AI visibility improves through ongoing refinement as models and queries evolve.
         </small>

@@ -441,9 +441,9 @@ export default function AuditPage() {
             </>
           ) : (
             <div className="card">
-              <h3 style={{ marginTop: 0 }}>Run an audit</h3>
+              <h3 style={{ marginTop: 0 }}>Run an AI Visibility Audit</h3>
               <p className="muted">
-                Enter a domain above and click Generate. You’ll get a scorecard and a PDF download.
+                Enter your website URL to generate an AI Visibility scorecard and PDF report highlighting strengths, gaps, and optimization opportunities.
               </p>
             </div>
           )}

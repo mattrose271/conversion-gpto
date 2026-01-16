@@ -399,7 +399,7 @@ export default function AuditPage() {
                   <strong style={{ display: "block", marginBottom: 10 }}>Report Sections</strong>
 
                   <div className="segRow">
-                    {["AI Readiness", "Structure", "Content Depth", "Technical"].map((label, idx) => {
+                    {["AI Readiness", "Structure", "Content", "Technical"].map((label, idx) => {
                       const isActive = activeSection === idx;
                       return (
                         <button

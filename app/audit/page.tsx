@@ -274,7 +274,7 @@ export default function AuditPage() {
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
           <h1>
-            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Clarity Audit
+            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Visibility Audit
           </h1>
           <p style={{ maxWidth: 720 }}>
             Paste a website URL to generate a scorecard + PDF download.

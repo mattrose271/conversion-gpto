@@ -51,6 +51,7 @@ export default function AuditPage() {
   function goPrev() {
     setActiveSection((s) => ((s + 3) % 4) as 0 | 1 | 2 | 3);
   }
+
   function goNext() {
     setActiveSection((s) => ((s + 1) % 4) as 0 | 1 | 2 | 3);
   }
@@ -95,6 +96,7 @@ export default function AuditPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url })
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Audit failed");
 
@@ -149,7 +151,7 @@ export default function AuditPage() {
         .segRow::-webkit-scrollbar { display: none; }
         .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
 
-        /* Prevent long sections (esp. Technical) from clipping on mobile */
+        /* Prevent long sections (esp. Technical Readiness) from clipping on mobile */
         .auditBlock {
           height: auto !important;
           max-height: none !important;
@@ -260,9 +262,7 @@ export default function AuditPage() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
-              <div className="muted" style={{ fontSize: 12 }}>
-                Estimated progress
-              </div>
+              <div className="muted" style={{ fontSize: 12 }}>Estimated progress</div>
               <div style={{ fontSize: 12, fontWeight: 800 }}>{Math.min(progress, 100)}%</div>
             </div>
           </div>
@@ -274,7 +274,7 @@ export default function AuditPage() {
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
           <h1>
-            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Visibility Audit
+            GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Readiness Audit
           </h1>
           <p style={{ maxWidth: 720 }}>
             Paste a website URL to generate a scorecard + PDF download.
@@ -286,7 +286,13 @@ export default function AuditPage() {
               e.preventDefault();
               if (!loading && url.trim()) run();
             }}
-            style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}
+            style={{
+              display: "flex",
+              gap: 12,
+              marginTop: 12,
+              flexWrap: "wrap",
+              alignItems: "center"
+            }}
           >
             <input
               value={url}
@@ -317,18 +323,21 @@ export default function AuditPage() {
                 {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"}
               </div>
 
-              {/* Scorecard + Meaning (mobile-safe stack via .scoreRow) */}
-              <div className="scoreRow" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {/* Scorecard + Meaning */}
+              <div
+                className="scoreRow"
+                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
+              >
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
 
                   <table className="auditTable">
                     <tbody>
                       {[
-                        ["AI Clarity", g.aiClarity],
+                        ["AI Clarity", g.aiReadiness],
                         ["Structure", g.structure],
                         ["Content Depth", g.contentDepth],
-                        ["Technical", g.technicalClarity],
+                        ["Technical", g.technicalReadiness],
                         ["Overall", g.overall]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
@@ -349,7 +358,10 @@ export default function AuditPage() {
                     </div>
 
                     <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-                      <a className="btn" href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}>
+                      <a
+                        className="btn"
+                        href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}
+                      >
                         Download PDF
                       </a>
                       <a className="btn alt" href="#details">
@@ -384,12 +396,12 @@ export default function AuditPage() {
               {/* Desktop: show all four */}
               <div className="desktopOnly">
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
-                  {renderBlock("AI Clarity", report.explanations?.perCategory?.aiClarity)}
+                  {renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
                   {renderBlock("Structure", report.explanations?.perCategory?.structure)}
                 </div>
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
                   {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {renderBlock("Technical", report.explanations?.perCategory?.technicalClarity)}
+                  {renderBlock("Technical", report.explanations?.perCategory?.technicalReadiness)}
                 </div>
               </div>
 
@@ -399,7 +411,7 @@ export default function AuditPage() {
                   <strong style={{ display: "block", marginBottom: 10 }}>Report Sections</strong>
 
                   <div className="segRow">
-                    {["AI Clarity", "Structure", "Content", "Technical"].map((label, idx) => {
+                    {["AI Clarity", "Structure", "Content Depth", "Technical"].map((label, idx) => {
                       const isActive = activeSection === idx;
                       return (
                         <button
@@ -429,13 +441,13 @@ export default function AuditPage() {
 
                 <div className="swipeArea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                   {activeSection === 0 &&
-                    renderBlock("AI Clarity", report.explanations?.perCategory?.aiClarity)}
+                    renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
                   {activeSection === 1 &&
                     renderBlock("Structure", report.explanations?.perCategory?.structure)}
                   {activeSection === 2 &&
                     renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
                   {activeSection === 3 &&
-                    renderBlock("Technical", report.explanations?.perCategory?.technicalClarity)}
+                    renderBlock("Technical", report.explanations?.perCategory?.technicalReadiness)}
                 </div>
               </div>
             </>
@@ -443,7 +455,7 @@ export default function AuditPage() {
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Run an AI Visibility Audit</h3>
               <p className="muted">
-                Enter your website URL to generate an AI Visibility scorecard and PDF report highlighting strengths, gaps, and optimization opportunities.
+                Enter your website above to see how AI systems interpret it — you’ll get a scorecard and downloadable report with clear next steps.
               </p>
             </div>
           )}
@@ -474,9 +486,9 @@ function renderBlock(title: string, block: any) {
       "Add trust signals near decision points (case studies, customer logos, security/privacy links)."
     ],
     "Structure": [
-      "Align page titles + H1s to the exact questions people search for (improves AI extractability and Clarity).",
+      "Align page titles + H1s to the exact questions people search for (improves AI extractability and clarity).",
       "Standardize templates: one clear H1, supporting H2s, and consistent internal linking between key pages.",
-      "Add meta descriptions to your highest-traffic pages to improve snippet Clarity and indexing confidence.",
+      "Add meta descriptions to your highest-traffic pages to improve snippet clarity and indexing confidence.",
       "Create clearer topic clusters (service → FAQs → case studies) so AI systems understand page relationships."
     ],
     "Content Depth": [
@@ -495,7 +507,7 @@ function renderBlock(title: string, block: any) {
 
   const nextLevel: string[] =
     (improvementsRaw.length ? improvementsRaw : defaultOpportunities[title] ?? [
-      "Even strong sites benefit from ongoing AI optimization: refine Clarity, consistency, and machine-readability across more pages."
+      "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."
     ]).slice(0, 6);
 
   const hasGaps =

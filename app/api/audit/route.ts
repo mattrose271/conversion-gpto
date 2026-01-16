@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import * as cheerio from "cheerio";
 import { XMLParser } from "fast-xml-parser";
-import { buildRecommendations } from "./knowledgeBase"; // <- expects app/api/audit/knowledgeBase.ts
+import { buildRecommendations } from "./knowledgeBase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ✅ Accepts anything non-empty; we normalize/validate ourselves
-const Body = z.object({ url: z.string().min(1) });
+const Body = z.object({
+  url: z.string().min(1)
+});
 
+// ----------------------------
+// Helpers
+// ----------------------------
 function normalizeInputUrl(input: string) {
   const raw = input.trim();
   if (!raw) throw new Error("Missing url");
@@ -29,8 +33,13 @@ function toGrade(score: number) {
   return "D";
 }
 
+function clamp0to100(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
 function hasAny(text: string, phrases: string[]) {
-  const t = text.toLowerCase();
+  const t = (text || "").toLowerCase();
   return phrases.some((p) => t.includes(p));
 }
 
@@ -50,9 +59,12 @@ async function fetchText(url: string, timeoutMs = 6000) {
   }
 }
 
+// ----------------------------
+// Deterministic discovery (sitemap + crawl)
+// ----------------------------
 async function getSitemapUrls(origin: string, maxPages: number) {
   try {
-    const { status, text } = await fetchText(`${origin}/sitemap.xml`);
+    const { status, text } = await fetchText(`${origin}/sitemap.xml`, 6000);
     if (status >= 400) return null;
 
     const parser = new XMLParser({ ignoreAttributes: false });
@@ -61,7 +73,6 @@ async function getSitemapUrls(origin: string, maxPages: number) {
     const urls: string[] = [];
     const urlsetRaw: any = parsed?.urlset?.url;
 
-    // Normalize to array (handles single <url> or many <url> entries)
     const urlEntries: any[] = Array.isArray(urlsetRaw)
       ? urlsetRaw
       : urlsetRaw
@@ -73,7 +84,11 @@ async function getSitemapUrls(origin: string, maxPages: number) {
       if (loc) urls.push(String(loc));
     }
 
-    return urls.filter((u) => u.startsWith(origin)).slice(0, maxPages);
+    // ✅ Deterministic: sort, filter, then slice
+    return urls
+      .filter((u) => u.startsWith(origin))
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, maxPages);
   } catch {
     return null;
   }
@@ -86,6 +101,7 @@ function extractInternalLinks(html: string, origin: string) {
   $("a[href]").each((_, el) => {
     const href = String($(el).attr("href") || "").trim();
     if (!href) return;
+
     try {
       const u = new URL(href, origin);
       if (u.origin === origin) {
@@ -95,7 +111,8 @@ function extractInternalLinks(html: string, origin: string) {
     } catch {}
   });
 
-  return [...links];
+  // ✅ Deterministic: sort
+  return [...links].sort((a, b) => a.localeCompare(b));
 }
 
 function summarize(html: string) {
@@ -112,7 +129,7 @@ function summarize(html: string) {
 }
 
 async function crawl(seedUrl: string) {
-  const maxPages = 20; // ✅ speed
+  const maxPages = 20; // stability + speed
   const maxDepth = 2;
 
   const seed = new URL(seedUrl);
@@ -135,11 +152,12 @@ async function crawl(seedUrl: string) {
   }
 
   const pages: any[] = [];
-  const deadline = Date.now() + 20000; // ✅ hard cap total time
+  const deadline = Date.now() + 20000;
 
   while (queue.length && pages.length < maxPages) {
     if (Date.now() > deadline) break;
 
+    // ✅ Deterministic: queue is already in stable order; process in stable batches
     const batch = queue.splice(0, Math.min(8, queue.length));
 
     for (const item of batch) {
@@ -147,7 +165,7 @@ async function crawl(seedUrl: string) {
       if (pages.length >= maxPages) break;
 
       try {
-        const { status, text } = await fetchText(item.url);
+        const { status, text } = await fetchText(item.url, 6000);
         if (status >= 400) {
           pages.push({ url: item.url, status });
           continue;
@@ -157,12 +175,16 @@ async function crawl(seedUrl: string) {
         pages.push({ url: item.url, status, ...s });
 
         if (!usedSitemap && item.depth < maxDepth) {
-          for (const link of extractInternalLinks(text, origin)) {
+          const links = extractInternalLinks(text, origin);
+          for (const link of links) {
             if (!seen.has(link) && seen.size < maxPages * 3) {
               seen.add(link);
               queue.push({ url: link, depth: item.depth + 1 });
             }
           }
+
+          // ✅ Deterministic: keep queue sorted after insertions
+          queue.sort((a, b) => a.url.localeCompare(b.url));
         }
       } catch {
         pages.push({ url: item.url, status: 0 });
@@ -173,66 +195,17 @@ async function crawl(seedUrl: string) {
   return { pages, scope: { maxPages, scannedPages: pages.length, usedSitemap }, origin };
 }
 
-/**
- * ✅ AI Readiness (Answerability): can an AI answer:
- * - what you do
- * - who it's for
- * - how it works
- * - trust/proof signals
- */
+// ----------------------------
+// AI Clarity / Answerability
+// ----------------------------
 function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
   const n = pagesOk.length || 1;
 
-  // Phrase sets (basic + tuneable)
-  const WHAT = [
-    "we help",
-    "we provide",
-    "we build",
-    "our product",
-    "our platform",
-    "our service",
-    "solution",
-    "software",
-    "platform"
-  ];
-  const WHO = [
-    "for teams",
-    "for businesses",
-    "for customers",
-    "for companies",
-    "for creators",
-    "for developers",
-    "for marketers",
-    "for recruiters",
-    "for enterprises",
-    "for small businesses"
-  ];
-  const HOW = [
-    "how it works",
-    "get started",
-    "workflow",
-    "features",
-    "pricing",
-    "plans",
-    "integrations",
-    "documentation",
-    "api",
-    "steps"
-  ];
-  const TRUST = [
-    "case study",
-    "testimonials",
-    "customers",
-    "trusted by",
-    "security",
-    "privacy",
-    "compliance",
-    "terms",
-    "soc 2",
-    "gdpr"
-  ];
+  const WHAT = ["we help", "we provide", "our product", "our service", "platform", "solution"];
+  const WHO = ["for teams", "for businesses", "for companies", "for marketers", "for recruiters", "for enterprises"];
+  const HOW = ["how it works", "get started", "features", "pricing", "plans", "documentation", "api"];
+  const TRUST = ["case study", "testimonials", "trusted by", "security", "privacy", "compliance", "terms", "gdpr", "soc 2"];
 
-  // Homepage detection
   const homeCandidates = new Set<string>([seedUrl, origin, `${origin}/`, `${origin}/home`]);
   const home = pagesOk.find((p) => homeCandidates.has(p.url));
 
@@ -250,35 +223,39 @@ function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
     if (hasAny(t, TRUST)) counts.trust += 1;
   }
 
-  // Target coverage: if a dimension appears on ~35%+ of scanned pages, that's "good coverage"
+  // Coverage target: if dimension appears on ~35% of pages, treat as “good”
   const target = 0.35;
 
   const dimScore = (count: number) => {
     const rate = count / n;
     const normalized = Math.min(1, rate / target);
-    return Math.round(25 * normalized); // each dimension max 25
+    return Math.round(25 * normalized);
   };
 
   let score =
     dimScore(counts.what) + dimScore(counts.who) + dimScore(counts.how) + dimScore(counts.trust);
 
-  // Small homepage bonus: if homepage exists and contains core "what" + "how"
+  // Small homepage bonus
   if (home) {
     const ht = pageText(home);
     const bonus = (hasAny(ht, WHAT) ? 3 : 0) + (hasAny(ht, HOW) ? 3 : 0);
     score = Math.min(100, score + bonus);
   }
 
-  const perDim = {
-    what: { count: counts.what, total: n },
-    who: { count: counts.who, total: n },
-    how: { count: counts.how, total: n },
-    trust: { count: counts.trust, total: n }
+  return {
+    score: clamp0to100(score),
+    perDim: {
+      what: { count: counts.what, total: n },
+      who: { count: counts.who, total: n },
+      how: { count: counts.how, total: n },
+      trust: { count: counts.trust, total: n }
+    }
   };
-
-  return { score, perDim };
 }
 
+// ----------------------------
+// Scoring
+// ----------------------------
 function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boolean) {
   const ok = pages.filter((p) => p.status > 0 && p.status < 400);
   const n = ok.length || 1;
@@ -287,12 +264,12 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
   const titleRate = ok.filter((p) => p.title && p.title.length > 2).length / n;
   const h1Rate = ok.filter((p) => (p.h1Count ?? 0) >= 1).length / n;
   const metaRate = ok.filter((p) => p.metaDescription).length / n;
-  const structureScore = Math.round(40 * titleRate + 35 * h1Rate + 25 * metaRate);
+  const structureScore = clamp0to100(40 * titleRate + 35 * h1Rate + 25 * metaRate);
 
-  // Content depth (simple proxy)
+  // Content depth
   const avgText = ok.reduce((a, p) => a + (p.text?.length ?? 0), 0) / n;
   const avgH2 = ok.reduce((a, p) => a + (p.h2Count ?? 0), 0) / n;
-  const contentScore = Math.round(
+  const contentScore = clamp0to100(
     (avgText >= 6000 ? 70 : avgText >= 2500 ? 55 : avgText >= 1200 ? 40 : 20) +
       (avgH2 >= 6 ? 25 : avgH2 >= 3 ? 15 : avgH2 >= 1 ? 5 : 0)
   );
@@ -302,32 +279,35 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
   const canonicalRate = ok.filter((p) => p.canonical).length / n;
   const errorRate =
     pages.filter((p) => p.status === 0 || p.status >= 400).length / (pages.length || 1);
-  const technicalScore = Math.round(
-    45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate)
-  );
+  const technicalScore = clamp0to100(45 * jsonLdRate + 30 * canonicalRate + 25 * (1 - errorRate));
 
-  // ✅ AI Readiness = Answerability (overall)
+  // ✅ AI Clarity score
   const answer = computeAnswerability(ok, seedUrl, origin);
   const aiReadinessScore = answer.score;
+
+  // ✅ Overall score = AI Clarity score (as you requested earlier)
+  const overallScore = aiReadinessScore;
+
+  // return both numeric and grade
+  const scores = {
+    aiReadiness: aiReadinessScore,
+    structure: structureScore,
+    contentDepth: contentScore,
+    technicalReadiness: technicalScore,
+    overall: overallScore
+  };
 
   const grades = {
     aiReadiness: toGrade(aiReadinessScore),
     structure: toGrade(structureScore),
     contentDepth: toGrade(contentScore),
     technicalReadiness: toGrade(technicalScore),
-
-    // ✅ Overall grade = AI Readiness grade (as requested)
-    overall: toGrade(aiReadinessScore)
+    overall: toGrade(overallScore)
   };
 
-  // Tier mapping — still considers fundamentals
+  // Tier mapping
   let tier: "Bronze" | "Silver" | "Gold";
-  if (
-    grades.overall === "A" ||
-    (grades.overall === "B" &&
-      grades.technicalReadiness !== "D" &&
-      grades.contentDepth !== "D")
-  ) {
+  if (grades.overall === "A" || (grades.overall === "B" && grades.technicalReadiness !== "D" && grades.contentDepth !== "D")) {
     tier = "Gold";
   } else if (grades.overall === "B" || grades.overall === "C") {
     tier = "Silver";
@@ -335,33 +315,21 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
     tier = "Bronze";
   }
 
-  const dimLines = (label: string, count: number, total: number) =>
-    `${label} language observed on ${count}/${total} scanned pages.`;
+  const dims = answer.perDim;
+  const dimRate = (d: any) => d.count / (d.total || 1);
 
   const aiStrengths: string[] = [];
   const aiGaps: string[] = [];
 
-  const dims = answer.perDim;
+  if (dimRate(dims.what) >= 0.35) aiStrengths.push(`Clear “what you do” language appears on ${dims.what.count}/${dims.what.total} scanned pages.`);
+  if (dimRate(dims.who) >= 0.35) aiStrengths.push(`Clear “who it’s for” language appears on ${dims.who.count}/${dims.who.total} scanned pages.`);
+  if (dimRate(dims.how) >= 0.35) aiStrengths.push(`Clear “how it works” language appears on ${dims.how.count}/${dims.how.total} scanned pages.`);
+  if (dimRate(dims.trust) >= 0.35) aiStrengths.push(`Trust/proof signals appear on ${dims.trust.count}/${dims.trust.total} scanned pages.`);
 
-  // Strengths: dimensions with decent coverage
-  if (dims.what.count / dims.what.total >= 0.35)
-    aiStrengths.push(dimLines("Clear “what you do”", dims.what.count, dims.what.total));
-  if (dims.who.count / dims.who.total >= 0.35)
-    aiStrengths.push(dimLines("Clear “who it’s for”", dims.who.count, dims.who.total));
-  if (dims.how.count / dims.how.total >= 0.35)
-    aiStrengths.push(dimLines("Clear “how it works”", dims.how.count, dims.how.total));
-  if (dims.trust.count / dims.trust.total >= 0.35)
-    aiStrengths.push(dimLines("Trust/proof signals", dims.trust.count, dims.trust.total));
-
-  // Gaps: dimensions with weak coverage
-  if (dims.what.count / dims.what.total < 0.2)
-    aiGaps.push("“What you do” is not consistently stated across key pages.");
-  if (dims.who.count / dims.who.total < 0.2)
-    aiGaps.push("“Who it’s for” is unclear or inconsistently stated.");
-  if (dims.how.count / dims.how.total < 0.2)
-    aiGaps.push("High-level “how it works” details are limited or hard to find.");
-  if (dims.trust.count / dims.trust.total < 0.2)
-    aiGaps.push("Trust/proof signals (e.g., customers, case studies, security) are limited or not prominent.");
+  if (dimRate(dims.what) < 0.2) aiGaps.push("“What you do” is not consistently stated across key pages.");
+  if (dimRate(dims.who) < 0.2) aiGaps.push("“Who it’s for” is unclear or inconsistently stated.");
+  if (dimRate(dims.how) < 0.2) aiGaps.push("High-level “how it works” details are limited or hard to find.");
+  if (dimRate(dims.trust) < 0.2) aiGaps.push("Trust/proof signals (e.g., customers, case studies, security/privacy) are limited or not prominent.");
 
   const explanations = {
     tierWhy:
@@ -372,13 +340,13 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
         : ["Baseline readiness is low: prioritize clear, consistent explanations on core pages first."],
     perCategory: {
       aiReadiness: {
-        strengths: aiStrengths.length ? aiStrengths : ["Answerability signals were limited across scanned pages."],
-        gaps: aiGaps.length ? aiGaps : ["No major answerability gaps detected at this scan depth."],
+        strengths: aiStrengths.length ? aiStrengths : ["Answerability signals were limited at this scan depth."],
+        gaps: aiGaps.length ? aiGaps : [],
         improvements: [
-          "Add a clear one-paragraph “what we do” statement on the homepage and primary product/service page.",
+          "Add a clear one-paragraph “what we do” statement on the homepage and primary service/product page.",
           "Add a “who it’s for” section with 2–4 concrete audience examples.",
           "Add a short “how it works” section or FAQ that explains the workflow in plain language.",
-          "Add trust signals (customer logos, case studies, security/privacy) where appropriate."
+          "Add trust signals (customer logos, case studies, security/privacy) near decision points."
         ]
       },
       structure: {
@@ -393,14 +361,8 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
         ]
       },
       contentDepth: {
-        strengths:
-          contentScore >= 70
-            ? ["Many pages contain substantial explanatory content and structured sections."]
-            : [],
-        gaps:
-          contentScore < 70
-            ? ["Content appears thin on a meaningful portion of scanned pages."]
-            : [],
+        strengths: contentScore >= 70 ? ["Many pages contain substantial explanatory content and structured sections."] : [],
+        gaps: contentScore < 70 ? ["Content appears thin on a meaningful portion of scanned pages."] : [],
         improvements: [
           "Add FAQs and decision content for your main services/offers.",
           "Expand thin pages with concrete details: who it’s for, how it works, proof points, and next steps."
@@ -420,7 +382,6 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
     }
   };
 
-  // ✅ Knowledge-base recommendations (basic industry best practices)
   const signals = {
     titleRate,
     h1Rate,
@@ -431,10 +392,10 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
     canonicalRate,
     errorRate,
     answerability: {
-      whatRate: answer.perDim.what.count / answer.perDim.what.total,
-      whoRate: answer.perDim.who.count / answer.perDim.who.total,
-      howRate: answer.perDim.how.count / answer.perDim.how.total,
-      trustRate: answer.perDim.trust.count / answer.perDim.trust.total
+      whatRate: dimRate(dims.what),
+      whoRate: dimRate(dims.who),
+      howRate: dimRate(dims.how),
+      trustRate: dimRate(dims.trust)
     },
     usedSitemap
   };
@@ -442,20 +403,26 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
   const recommendations = buildRecommendations(signals as any);
 
   return {
+    scores,
     grades,
+    overallScore,
     tier,
     explanations,
-    recommendations,
-
-    // Optional debug (remove if you prefer)
-    _debug: {
-      aiReadinessScore,
-      structureScore,
-      contentScore,
-      technicalScore,
-      answerabilityDims: answer.perDim
-    }
+    recommendations
   };
+}
+
+// ----------------------------
+// 24h cache (simple, per-instance)
+// NOTE: This won’t persist across cold starts, but it reduces repeat-run variance.
+// ----------------------------
+type CacheEntry = { ts: number; payload: any };
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function getCacheMap(): Map<string, CacheEntry> {
+  const g: any = globalThis as any;
+  if (!g.__gptoAuditCache) g.__gptoAuditCache = new Map<string, CacheEntry>();
+  return g.__gptoAuditCache as Map<string, CacheEntry>;
 }
 
 export async function POST(req: Request) {
@@ -463,17 +430,30 @@ export async function POST(req: Request) {
     const parsed = Body.parse(await req.json());
     const url = normalizeInputUrl(parsed.url);
 
+    const seed = new URL(url);
+    const cacheKey = seed.origin; // cache per domain (most stable + what users expect)
+    const cache = getCacheMap();
+
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      return NextResponse.json(cached.payload);
+    }
+
     const started = Date.now();
 
     const { pages, scope, origin } = await crawl(url);
     const scored = score(pages, url, origin, scope.usedSitemap);
     const durationMs = Date.now() - started;
 
-    return NextResponse.json({
+    const payload = {
       url,
       scope: { ...scope, durationMs },
       ...scored
-    });
+    };
+
+    cache.set(cacheKey, { ts: Date.now(), payload });
+
+    return NextResponse.json(payload);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Bad request" }, { status: 400 });
   }

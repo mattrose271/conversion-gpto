@@ -71,12 +71,15 @@ export default function AuditPage() {
 
     touchStartRef.current = null;
 
+    // Ignore long presses / slow drags
     if (dt > 900) return;
-    if (Math.abs(dx) < 55) return;
-    if (Math.abs(dy) > 80) return;
 
-    if (dx < 0) goNext();
-    else goPrev();
+    // Must be mostly horizontal
+    if (Math.abs(dx) < 55) return; // swipe threshold
+    if (Math.abs(dy) > 80) return; // too vertical
+
+    if (dx < 0) goNext(); // swipe left
+    else goPrev(); // swipe right
   }
 
   async function run() {
@@ -95,8 +98,11 @@ export default function AuditPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Audit failed");
 
+      // Finish bar, then reveal content
       setProgress(100);
       setReport(data);
+
+      // Reset mobile slider to first section on each new report
       setActiveSection(0);
 
       setTimeout(() => {
@@ -142,6 +148,18 @@ export default function AuditPage() {
         }
         .segRow::-webkit-scrollbar { display: none; }
         .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
+
+        /* Prevent long sections (esp. Technical Readiness) from clipping on mobile */
+        .auditBlock {
+          height: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+
+        /* Let iPhone scroll vertically while we still detect horizontal swipes */
+        .swipeArea {
+          touch-action: pan-y;
+        }
 
         /* Make cards and content fit small phones cleanly */
         @media (max-width: 900px) {
@@ -409,7 +427,7 @@ export default function AuditPage() {
                   <div className="sectionHint">Tip: Swipe left/right on the section below.</div>
                 </div>
 
-                <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+                <div className="swipeArea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                   {activeSection === 0 &&
                     renderBlock("AI Readiness", report.explanations?.perCategory?.aiReadiness)}
                   {activeSection === 1 &&
@@ -485,7 +503,7 @@ function renderBlock(title: string, block: any) {
     !(gapsRaw.length === 1 && String(gapsRaw[0]).toLowerCase().includes("no major"));
 
   return (
-    <section className="card">
+    <section className="card auditBlock">
       <h3 style={{ marginTop: 0 }}>{title}</h3>
 
       <strong>Strengths</strong>

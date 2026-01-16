@@ -71,15 +71,12 @@ export default function AuditPage() {
 
     touchStartRef.current = null;
 
-    // Ignore long presses / slow drags
     if (dt > 900) return;
+    if (Math.abs(dx) < 55) return;
+    if (Math.abs(dy) > 80) return;
 
-    // Must be mostly horizontal
-    if (Math.abs(dx) < 55) return; // swipe threshold
-    if (Math.abs(dy) > 80) return; // too vertical
-
-    if (dx < 0) goNext(); // swipe left
-    else goPrev(); // swipe right
+    if (dx < 0) goNext();
+    else goPrev();
   }
 
   async function run() {
@@ -98,11 +95,8 @@ export default function AuditPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Audit failed");
 
-      // Finish bar, then reveal content
       setProgress(100);
       setReport(data);
-
-      // Reset mobile slider to first section on each new report
       setActiveSection(0);
 
       setTimeout(() => {
@@ -126,17 +120,19 @@ export default function AuditPage() {
           30% { opacity: 0.35; }
           100% { transform: translateX(160%); opacity: 0.0; }
         }
-        .auditTable td { padding: 10px 6px; }
-        .auditTable tr { border-bottom: 1px solid rgba(0,0,0,.08); }
 
+        /* --- Responsive helpers --- */
         .mobileOnly { display: none; }
         .desktopOnly { display: block; }
 
-        @media (max-width: 900px) {
-          .mobileOnly { display: block; }
-          .desktopOnly { display: none; }
-        }
+        /* Scorecard table styles */
+        .auditTable { width: 100%; border-collapse: collapse; }
+        .auditTable td { padding: 10px 6px; vertical-align: top; }
+        .auditTable tr { border-bottom: 1px solid rgba(0,0,0,.08); }
+        .auditLabel { font-weight: 800; }
+        .auditValue { text-align: right; font-weight: 900; }
 
+        /* “Report sections” pills */
         .segRow {
           display: flex;
           gap: 8px;
@@ -145,11 +141,39 @@ export default function AuditPage() {
           -webkit-overflow-scrolling: touch;
         }
         .segRow::-webkit-scrollbar { display: none; }
+        .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
 
-        .sectionHint {
-          font-size: 12px;
-          opacity: 0.7;
-          margin-top: 8px;
+        /* Make cards and content fit small phones cleanly */
+        @media (max-width: 900px) {
+          .mobileOnly { display: block; }
+          .desktopOnly { display: none; }
+
+          /* Ensure your brand grid never stays 2-col on iPhone */
+          .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr !important; }
+
+          /* Tighter paddings */
+          .container { padding-left: 16px !important; padding-right: 16px !important; }
+
+          /* Make hero headings wrap nicely */
+          h1 { font-size: 34px !important; line-height: 1.05 !important; }
+
+          /* Form should stack cleanly */
+          .auditForm { flex-direction: column !important; align-items: stretch !important; }
+          .auditForm input { width: 100% !important; min-width: 0 !important; }
+          .auditForm .btn, .auditForm .btn.alt { width: 100% !important; text-align: center !important; }
+
+          /* Scorecard + Meaning cards stack */
+          .scoreRow { display: grid !important; grid-template-columns: 1fr !important; gap: 12px !important; }
+
+          /* Table stays readable on very narrow screens */
+          .auditLabel { font-size: 15px !important; }
+          .auditValue { font-size: 15px !important; }
+        }
+
+        /* Ultra-small iPhones */
+        @media (max-width: 380px) {
+          h1 { font-size: 30px !important; }
+          .auditTable td { padding: 8px 4px; }
         }
       `}</style>
 
@@ -234,22 +258,24 @@ export default function AuditPage() {
           <h1>
             GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Readiness Audit
           </h1>
-          <p style={{ maxWidth: 720 }}>Paste a website URL to generate a scorecard + PDF download.</p>
+          <p style={{ maxWidth: 720 }}>
+            Paste a website URL to generate a scorecard + PDF download.
+          </p>
 
-          {/* Input + Generate (branded) */}
           <form
+            className="auditForm"
             onSubmit={(e) => {
               e.preventDefault();
               if (!loading && url.trim()) run();
             }}
-            style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}
+            style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}
           >
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="example.com"
               aria-label="Website URL"
-              style={{ minWidth: 260, flex: 1 }}
+              style={{ flex: 1, minWidth: 0 }}
             />
             <button className="btn" type="submit" disabled={loading || !url.trim()}>
               {loading ? "Generating…" : "Generate"}
@@ -273,12 +299,12 @@ export default function AuditPage() {
                 {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"}
               </div>
 
-              <div className="grid cols-2" style={{ alignItems: "start" }}>
-                {/* Scorecard */}
+              {/* Scorecard + Meaning (mobile-safe stack via .scoreRow) */}
+              <div className="scoreRow" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
 
-                  <table className="auditTable" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table className="auditTable">
                     <tbody>
                       {[
                         ["AI Readiness", g.aiReadiness],
@@ -288,8 +314,8 @@ export default function AuditPage() {
                         ["Overall", g.overall]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
-                          <td style={{ fontWeight: 800 }}>{k as string}</td>
-                          <td style={{ textAlign: "right", fontWeight: 900 }}>{v as string}</td>
+                          <td className="auditLabel">{k as string}</td>
+                          <td className="auditValue">{v as string}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -315,10 +341,9 @@ export default function AuditPage() {
                   </div>
                 </div>
 
-                {/* One-line explanations */}
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
-                  <ul>
+                  <ul style={{ marginBottom: 0 }}>
                     <li>
                       <strong>AI Readiness:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
                     </li>
@@ -332,7 +357,7 @@ export default function AuditPage() {
                       <strong>Technical Readiness:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
                     </li>
                   </ul>
-                  <small className="muted">These are based on observable signals from scanned public pages.</small>
+                  <small className="muted">Based on observable signals from scanned public pages.</small>
                 </div>
               </div>
 
@@ -399,7 +424,9 @@ export default function AuditPage() {
           ) : (
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Run an audit</h3>
-              <p className="muted">Enter a domain above and click Generate. You’ll get a scorecard and a PDF download.</p>
+              <p className="muted">
+                Enter a domain above and click Generate. You’ll get a scorecard and a PDF download.
+              </p>
             </div>
           )}
         </div>
@@ -448,7 +475,6 @@ function renderBlock(title: string, block: any) {
     ]
   };
 
-  // Always show next-level opportunities; prefer backend improvements if present
   const nextLevel: string[] =
     (improvementsRaw.length ? improvementsRaw : defaultOpportunities[title] ?? [
       "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."

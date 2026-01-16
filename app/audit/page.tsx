@@ -149,7 +149,7 @@ export default function AuditPage() {
         .segRow::-webkit-scrollbar { display: none; }
         .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
 
-        /* Prevent long sections (esp. Technical Clarity) from clipping on mobile */
+        /* Prevent long sections (esp. Technical) from clipping on mobile */
         .auditBlock {
           height: auto !important;
           max-height: none !important;
@@ -328,7 +328,7 @@ export default function AuditPage() {
                         ["AI Clarity", g.aiClarity],
                         ["Structure", g.structure],
                         ["Content Depth", g.contentDepth],
-                        ["Technical Clarity", g.technicalClarity],
+                        ["Technical", g.technicalClarity],
                         ["Overall", g.overall]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
@@ -372,7 +372,7 @@ export default function AuditPage() {
                       <strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.
                     </li>
                     <li>
-                      <strong>Technical Clarity:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
+                      <strong>Technical:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
                     </li>
                   </ul>
                   <small className="muted">Based on observable signals from scanned public pages.</small>
@@ -389,7 +389,7 @@ export default function AuditPage() {
                 </div>
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
                   {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {renderBlock("Technical Clarity", report.explanations?.perCategory?.technicalClarity)}
+                  {renderBlock("Technical", report.explanations?.perCategory?.technicalClarity)}
                 </div>
               </div>
 
@@ -435,7 +435,7 @@ export default function AuditPage() {
                   {activeSection === 2 &&
                     renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
                   {activeSection === 3 &&
-                    renderBlock("Technical Clarity", report.explanations?.perCategory?.technicalClarity)}
+                    renderBlock("Technical", report.explanations?.perCategory?.technicalClarity)}
                 </div>
               </div>
             </>
@@ -485,7 +485,7 @@ function renderBlock(title: string, block: any) {
       "Create 2–3 authoritative pages that explain your core offer in depth and link to them from key pages.",
       "Add examples (screenshots, outcomes, results) that reduce AI uncertainty when summarizing."
     ],
-    "Technical Clarity": [
+    "Technical": [
       "Extend structured data (JSON-LD) beyond the homepage to core service/product and FAQ pages where relevant.",
       "Ensure canonical tags are consistent across variants (www/non-www, trailing slash, query params).",
       "Publish/verify sitemap.xml and reference it in robots.txt for cleaner discovery.",

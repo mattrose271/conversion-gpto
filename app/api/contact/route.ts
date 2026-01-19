@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     ].join("\n");
 
     await resend.emails.send({
-      // IMPORTANT: replace this with a VERIFIED sender in your Resend account
+      // IMPORTANT: This must be a verified sender in Resend.
       from: "GPTO Audit <no-reply@conversionia.com>",
       to: [to],
       replyTo: input.email,
@@ -54,6 +54,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, message: "Sent." });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Bad request" }, { status: 400 });
+    return NextResponse.json(
+      { error: e?.message || "Bad request" },
+      { status: 400 }
+    );
   }
 }

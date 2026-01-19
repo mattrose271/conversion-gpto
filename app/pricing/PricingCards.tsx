@@ -92,12 +92,10 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
     return `/contact?${qs.toString()}`;
   }
 
-  // Track active slide on scroll (mobile only; dots hidden on desktop anyway)
   function handleScroll() {
     const el = sliderRef.current;
     if (!el) return;
 
-    // Throttle using requestAnimationFrame
     if (rafRef.current) return;
     rafRef.current = window.requestAnimationFrame(() => {
       rafRef.current = null;
@@ -105,7 +103,6 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
       const slides = Array.from(el.querySelectorAll<HTMLElement>("[data-slide='1']"));
       if (!slides.length) return;
 
-      // Find slide whose center is closest to the container center
       const containerCenter = el.scrollLeft + el.clientWidth / 2;
 
       let bestIdx = 0;
@@ -138,9 +135,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
   }
 
   useEffect(() => {
-    // Set initial active index (in case the container starts scrolled)
     handleScroll();
-
     return () => {
       if (rafRef.current) {
         window.cancelAnimationFrame(rafRef.current);
@@ -153,7 +148,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
   return (
     <div style={{ marginTop: 16 }}>
       <style>{`
-        /* Mobile slider */
+        /* Slider container */
         .pricingSlider {
           display: flex;
           gap: 14px;
@@ -162,6 +157,13 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           -webkit-overflow-scrolling: touch;
           padding: 4px 2px 12px;
           scrollbar-width: none;
+
+          /* Prevent page-side "rubber band" / drift */
+          overscroll-behavior-x: contain;
+          scroll-snap-stop: always;
+
+          /* Make horizontal gestures apply to the slider */
+          touch-action: pan-x;
         }
         .pricingSlider::-webkit-scrollbar { display: none; }
 
@@ -169,6 +171,22 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           scroll-snap-align: center;
           flex: 0 0 86%;
           max-width: 520px;
+        }
+
+        /* Card text sizing defaults */
+        .planTier { font-weight: 900; font-size: 18px; }
+        .planPrice { font-size: 40px; font-weight: 900; margin-top: 6px; line-height: 1; }
+        .planSub { margin-top: 10px; min-height: 44px; }
+        .planBullets { margin: 0; padding-left: 18px; display: grid; gap: 10px; }
+        .planBullets li { line-height: 1.3; }
+
+        /* MOBILE: reduce font sizes a bit for more words per line */
+        @media (max-width: 480px) {
+          .planTier { font-size: 16px; }
+          .planPrice { font-size: 34px; }
+          .planSub { font-size: 14px; min-height: 0; }
+          .planBullets { gap: 8px; }
+          .planBullets li { font-size: 14px; line-height: 1.25; }
         }
 
         /* Desktop grid */
@@ -180,6 +198,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
             overflow: visible;
             scroll-snap-type: none;
             padding: 0;
+            touch-action: auto;
           }
           .slide {
             flex: initial;
@@ -203,12 +222,8 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           padding: 0;
           cursor: pointer;
         }
-        .dotActive {
-          background: var(--brand-red);
-        }
-        @media (min-width: 900px) {
-          .dots { display: none; }
-        }
+        .dotActive { background: var(--brand-red); }
+        @media (min-width: 900px) { .dots { display: none; } }
       `}</style>
 
       <div
@@ -221,7 +236,12 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           const isRec = allowHighlight && highlightTier && p.tier === highlightTier;
 
           return (
-            <div className="slide" data-slide="1" key={p.tier} aria-label={`Plan ${idx + 1} of ${plans.length}`}>
+            <div
+              className="slide"
+              data-slide="1"
+              key={p.tier}
+              aria-label={`Plan ${idx + 1} of ${plans.length}`}
+            >
               <div
                 className="card"
                 style={{
@@ -254,23 +274,19 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
                   </div>
                 )}
 
-                <div style={{ fontWeight: 900, fontSize: 18 }}>{p.tier}</div>
+                <div className="planTier">{p.tier}</div>
 
-                <div style={{ fontSize: 40, fontWeight: 900, marginTop: 6, lineHeight: 1 }}>
+                <div className="planPrice">
                   {p.price} <span style={{ fontSize: 18, fontWeight: 800 }}>/ mo</span>
                 </div>
 
-                <div className="muted" style={{ marginTop: 10, minHeight: 44 }}>
-                  {p.sub}
-                </div>
+                <div className="muted planSub">{p.sub}</div>
 
                 <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "14px 0" }} />
 
-                <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 10 }}>
+                <ul className="planBullets">
                   {p.bullets.map((b) => (
-                    <li key={b} style={{ lineHeight: 1.3 }}>
-                      {b}
-                    </li>
+                    <li key={b}>{b}</li>
                   ))}
                 </ul>
 
@@ -293,7 +309,6 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
         })}
       </div>
 
-      {/* Dots */}
       <div className="dots" aria-label="Pricing slider navigation">
         {plans.map((_, i) => (
           <button

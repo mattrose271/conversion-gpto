@@ -1,21 +1,42 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type Tier = "Bronze" | "Silver" | "Gold";
 
 type Props = {
-  /** If set, highlights that tier with a "Recommended" badge. If undefined, no badge shown. */
-  highlightTier?: "Bronze" | "Silver" | "Gold";
-  /** If true, shows a short "deliverables" list and a Get Started button */
-  showGetStarted?: boolean;
+  /** If false, the "Recommended" badge is never shown (use this on homepage). */
+  allowHighlight?: boolean;
   /** Prefills contact form website */
   website?: string;
 };
 
-export default function PricingCards({
-  highlightTier,
-  showGetStarted = true,
-  website = ""
-}: Props) {
+export default function PricingCards({ allowHighlight = true, website = "" }: Props) {
+  const [highlightTier, setHighlightTier] = useState<Tier | "">("");
+
+  useEffect(() => {
+    if (!allowHighlight) {
+      setHighlightTier("");
+      return;
+    }
+
+    try {
+      // ONLY show highlight when arriving from audit via query param (?tier=Gold)
+      const params = new URLSearchParams(window.location.search);
+      const qp = (params.get("tier") || "").trim().toLowerCase();
+
+      const mapped: Tier | "" =
+        qp === "bronze" ? "Bronze" :
+        qp === "silver" ? "Silver" :
+        qp === "gold" ? "Gold" :
+        "";
+
+      setHighlightTier(mapped);
+    } catch {
+      setHighlightTier("");
+    }
+  }, [allowHighlight]);
+
   const plans = useMemo(() => {
     return [
       {
@@ -71,7 +92,7 @@ export default function PricingCards({
   return (
     <div className="grid cols-3" style={{ alignItems: "stretch", gap: 18, marginTop: 16 }}>
       {plans.map((p) => {
-        const isRec = highlightTier && p.tier === highlightTier;
+        const isRec = allowHighlight && highlightTier && p.tier === highlightTier;
 
         return (
           <div
@@ -89,7 +110,6 @@ export default function PricingCards({
               minHeight: 520
             }}
           >
-            {/* Recommended badge ONLY if highlightTier provided */}
             {isRec && (
               <div
                 style={{
@@ -128,20 +148,19 @@ export default function PricingCards({
               ))}
             </ul>
 
-            {showGetStarted && (
-              <div style={{ marginTop: "auto", paddingTop: 16 }}>
-                <a
-                  className="btn"
-                  href={getStartedHref(p.tier)}
-                  style={{ width: "100%", textAlign: "center", display: "block" }}
-                >
-                  Get Started
-                </a>
-                <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
-                  3 month commitment
-                </div>
+            <div style={{ marginTop: "auto", paddingTop: 16 }}>
+              <a
+                className="btn"
+                href={getStartedHref(p.tier)}
+                style={{ width: "100%", textAlign: "center", display: "block" }}
+              >
+                Get Started
+              </a>
+
+              <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
+                3 month commitment
               </div>
-            )}
+            </div>
           </div>
         );
       })}

@@ -363,10 +363,13 @@ export default function AuditPage() {
 
                       <a
                         className="btn alt"
-                        href={`/pricing?tier=${encodeURIComponent(report.tier)}#${String(report.tier).toLowerCase()}-deliverables`}
+                        href={`/pricing?tier=${encodeURIComponent(report.tier)}&url=${encodeURIComponent(
+                          report.url
+                        )}#${String(report.tier || "").toLowerCase()}-deliverables`}
                         >
-                        View Tier Deliverables
+                          View Tier Deliverables
                       </a>
+
 
 
                       <a className="btn alt" href="#details">

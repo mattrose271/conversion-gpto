@@ -113,7 +113,7 @@ export default function HomePage() {
 
     {/* NO recommended banner on homepage */}
     <PricingCards allowHighlight={false} />
- />
+ 
   </div>
 </section>
 

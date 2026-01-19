@@ -1,76 +1,429 @@
 import { NextResponse } from "next/server";
-import React from "react";
-import { renderToBuffer, Document, Page, Text, View } from "@react-pdf/renderer";
+import { z } from "zod";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  renderToBuffer
+} from "@react-pdf/renderer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const url = searchParams.get("url");
+const Query = z.object({
+  url: z.string().min(1)
+});
 
-  if (!url) {
-    return NextResponse.json({ error: "Missing url" }, { status: 400 });
+function normalizeInputUrl(input: string) {
+  const raw = (input || "").trim();
+  if (!raw) throw new Error("Missing url");
+
+  const withScheme =
+    raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+
+  const u = new URL(withScheme);
+  u.hash = "";
+  return u.toString();
+}
+
+function hostSlug(url: string) {
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, "");
+    return h.replace(/[^a-z0-9.-]/gi, "-").slice(0, 60) || "site";
+  } catch {
+    return "site";
   }
+}
 
-  // Call the audit endpoint (no direct imports)
-  const auditRes = await fetch(new URL("/api/audit", req.url), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url })
-  });
+const BRAND_RED = "#B32025";
 
-  if (!auditRes.ok) {
-    const err = await auditRes.text();
-    return NextResponse.json({ error: "Audit failed", detail: err }, { status: 500 });
-  }
+const styles = StyleSheet.create({
+  page: {
+    paddingTop: 34,
+    paddingBottom: 36,
+    paddingHorizontal: 34,
+    fontSize: 11,
+    fontFamily: "Helvetica",
+    color: "#111"
+  },
+  topBar: {
+    height: 6,
+    backgroundColor: BRAND_RED,
+    marginBottom: 14
+  },
+  header: {
+    marginBottom: 14
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 700
+  },
+  subTitle: {
+    marginTop: 4,
+    fontSize: 11,
+    color: "#444"
+  },
+  meta: {
+    marginTop: 6,
+    fontSize: 10,
+    color: "#666"
+  },
+  pill: {
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: "#F3F3F3",
+    alignSelf: "flex-start"
+  },
+  pillText: {
+    fontSize: 10,
+    color: "#222"
+  },
 
-  const report = await auditRes.json();
+  section: {
+    marginTop: 14
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    marginBottom: 8
+  },
 
-  const Pdf = (
-    <Document>
-      <Page size="A4" style={{ padding: 28, fontSize: 11 }}>
-        <Text style={{ fontSize: 18, marginBottom: 10 }}>GPTO AI Readiness Scorecard</Text>
-        <Text style={{ color: "#666", marginBottom: 10 }}>Website: {report.url}</Text>
+  // Scorecard table
+  scoreTable: {
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    borderRadius: 10,
+    padding: 10
+  },
+  scoreRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFEFEF"
+  },
+  scoreRowLast: {
+    borderBottomWidth: 0
+  },
+  scoreLabel: {
+    fontSize: 11,
+    fontWeight: 700
+  },
+  scoreValue: {
+    fontSize: 11,
+    fontWeight: 700
+  },
 
-        <Text style={{ fontSize: 13, marginTop: 10, marginBottom: 6 }}>Scorecard</Text>
-        {[
-         ["AI Readiness", report.grades.aiReadiness],
-          ["Structure", report.grades.structure],
-          ["Content Depth", report.grades.contentDepth],
-          ["Technical Readiness", report.grades.technicalReadiness],
-          ["Overall", report.grades.overall]
-        ].map(([k, v]) => (
-          <View
-            key={String(k)}
-            style={{ flexDirection: "row", borderBottomWidth: 1, paddingVertical: 6 }}
-          >
-            <Text style={{ width: "70%" }}>{String(k)}</Text>
-            <Text style={{ width: "30%", textAlign: "right" }}>{String(v)}</Text>
-          </View>
-        ))}
-
-        <Text style={{ fontSize: 13, marginTop: 12, marginBottom: 6 }}>Recommended Tier</Text>
-        <Text>{report.tier}</Text>
-
-        <Text style={{ fontSize: 13, marginTop: 12, marginBottom: 6 }}>Scope</Text>
-        <Text style={{ color: "#666" }}>
-          Scanned {report.scope?.scannedPages} pages (max {report.scope?.maxPages}) •{" "}
-          {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"} •{" "}
-          {Math.round((report.scope?.durationMs ?? 0) / 1000)}s
-        </Text>
-      </Page>
-    </Document>
-  );
-
-  const pdfBuffer = await renderToBuffer(Pdf);
-const pdfBytes = new Uint8Array(pdfBuffer);
-
-return new NextResponse(pdfBytes, {
-  headers: {
-    "Content-Type": "application/pdf",
-    "Content-Disposition": `attachment; filename="gpto-scorecard.pdf"`
+  // Two-column layout
+  twoCol: {
+    flexDirection: "row",
+    gap: 12
+  },
+  col: {
+    flexGrow: 1,
+    flexBasis: 0
+  },
+  box: {
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+    borderRadius: 10,
+    padding: 10
+  },
+  boxTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    marginBottom: 6
+  },
+  bullet: {
+    marginLeft: 10,
+    marginBottom: 4,
+    color: "#111"
+  },
+  muted: {
+    color: "#666"
+  },
+  footer: {
+    position: "absolute",
+    left: 34,
+    right: 34,
+    bottom: 18,
+    fontSize: 9,
+    color: "#777",
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  hr: {
+    marginTop: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFEFEF"
   }
 });
 
+function bullets(items: any[] | undefined, fallback: string) {
+  const list = (Array.isArray(items) ? items : []).filter(Boolean).slice(0, 8);
+  if (!list.length) return [fallback];
+  return list.map((x) => String(x));
+}
+
+function ScoreRow({
+  label,
+  value,
+  last
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.scoreRow, last ? styles.scoreRowLast : null]}>
+      <Text style={styles.scoreLabel}>{label}</Text>
+      <Text style={styles.scoreValue}>{value}</Text>
+    </View>
+  );
+}
+
+function SectionBlock({
+  title,
+  strengths,
+  gapsOrOpps,
+  nextSteps,
+  gapsHeading
+}: {
+  title: string;
+  strengths: string[];
+  gapsOrOpps: string[];
+  nextSteps: string[];
+  gapsHeading: string;
+}) {
+  return (
+    <View style={[styles.section, styles.box]}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+
+      <Text style={styles.boxTitle}>Strengths</Text>
+      {strengths.map((s, i) => (
+        <Text key={`s-${i}`} style={styles.bullet}>
+          • {s}
+        </Text>
+      ))}
+
+      <View style={{ marginTop: 8 }} />
+      <Text style={styles.boxTitle}>{gapsHeading}</Text>
+      {gapsOrOpps.map((s, i) => (
+        <Text key={`g-${i}`} style={styles.bullet}>
+          • {s}
+        </Text>
+      ))}
+
+      <View style={{ marginTop: 8 }} />
+      <Text style={styles.boxTitle}>Recommended Next Steps</Text>
+      {nextSteps.map((s, i) => (
+        <Text key={`n-${i}`} style={styles.bullet}>
+          • {s}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+export async function GET(req: Request) {
+  try {
+    // 1) Read URL from query
+    const requestUrl = new URL(req.url);
+    const urlParam = requestUrl.searchParams.get("url") || "";
+    const { url } = Query.parse({ url: urlParam });
+    const normalizedUrl = normalizeInputUrl(url);
+
+    // 2) Call your existing /api/audit so PDF matches website output exactly
+    const origin = requestUrl.origin;
+    const auditRes = await fetch(`${origin}/api/audit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: normalizedUrl })
+    });
+
+    const report = await auditRes.json();
+    if (!auditRes.ok) {
+      const msg = report?.error || "Audit failed";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+
+    // 3) Format score strings (use /100 + grade when present)
+    const scores = report?.scores || {};
+    const grades = report?.grades || {};
+
+    const fmt = (scoreKey: string, gradeKey: string) => {
+      const s = scores?.[scoreKey];
+      const g = grades?.[gradeKey];
+      if (typeof s === "number" && typeof g === "string") return `${s} / 100 (${g})`;
+      if (typeof g === "string") return g;
+      return "—";
+    };
+
+    const tier = String(report?.tier || "—");
+    const tierWhy = Array.isArray(report?.explanations?.tierWhy)
+      ? report.explanations.tierWhy.slice(0, 2).join(" ")
+      : "";
+
+    // Per-category blocks (titles match the website labels)
+    const per = report?.explanations?.perCategory || {};
+
+    const ai = per?.aiReadiness || {};
+    const st = per?.structure || {};
+    const cd = per?.contentDepth || {};
+    const tr = per?.technicalReadiness || {};
+
+    // Make sure we never show “Not observed...” in PDF; use “Next level” language
+    const aiStrengths = bullets(ai?.strengths, "Solid foundation observed at this scan depth.");
+    const aiGaps = bullets(
+      ai?.gaps,
+      "No critical issues detected — focus shifts to ongoing AI clarity improvements."
+    );
+    const aiNext = bullets(
+      ai?.improvements,
+      "Refine clarity and consistency across core pages to strengthen AI interpretation."
+    );
+
+    const stStrengths = bullets(st?.strengths, "Solid foundation observed at this scan depth.");
+    const stGaps = bullets(
+      st?.gaps,
+      "No critical issues detected — focus shifts to refinement and standardization."
+    );
+    const stNext = bullets(
+      st?.improvements,
+      "Standardize templates and strengthen internal linking between key pages."
+    );
+
+    const cdStrengths = bullets(cd?.strengths, "Solid foundation observed at this scan depth.");
+    const cdGaps = bullets(
+      cd?.gaps,
+      "No critical issues detected — focus shifts to expanding decision-support content."
+    );
+    const cdNext = bullets(
+      cd?.improvements,
+      "Expand thin pages with specifics: process, proof points, and next steps."
+    );
+
+    const trStrengths = bullets(tr?.strengths, "Solid foundation observed at this scan depth.");
+    const trGaps = bullets(
+      tr?.gaps,
+      "No critical issues detected — focus shifts to deeper technical optimization."
+    );
+    const trNext = bullets(
+      tr?.improvements,
+      "Improve machine-readable signals (schema, canonicals) and reduce crawl friction."
+    );
+
+    const generatedAt = new Date().toLocaleString();
+
+    // 4) Build PDF
+    const Pdf = (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <View style={styles.topBar} />
+
+          <View style={styles.header}>
+            <Text style={styles.title}>GPTO AI Readiness Audit</Text>
+            <Text style={styles.subTitle}>Conversion Interactive Agency</Text>
+
+            <Text style={styles.meta}>
+              Website: {normalizedUrl}
+              {"\n"}
+              Generated: {generatedAt}
+            </Text>
+
+            <View style={styles.pill}>
+              <Text style={styles.pillText}>
+                Recommended GPTO Tier: <Text style={{ color: BRAND_RED }}>{tier}</Text>
+                {tierWhy ? ` — ${tierWhy}` : ""}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Scorecard</Text>
+
+            <View style={styles.scoreTable}>
+              <ScoreRow label="AI Clarity" value={fmt("aiReadiness", "aiReadiness")} />
+              <ScoreRow label="Structure" value={fmt("structure", "structure")} />
+              <ScoreRow label="Content Depth" value={fmt("contentDepth", "contentDepth")} />
+              <ScoreRow label="Technical" value={fmt("technicalReadiness", "technicalReadiness")} />
+              <ScoreRow label="Overall" value={fmt("overall", "overall")} last />
+            </View>
+
+            <View style={styles.hr} />
+          </View>
+
+          {/* Detailed sections */}
+          <View style={styles.twoCol}>
+            <View style={styles.col}>
+              <SectionBlock
+                title="AI Clarity"
+                strengths={aiStrengths}
+                gapsOrOpps={aiGaps}
+                nextSteps={aiNext}
+                gapsHeading="Optimization Opportunities (Next Level)"
+              />
+            </View>
+            <View style={styles.col}>
+              <SectionBlock
+                title="Structure"
+                strengths={stStrengths}
+                gapsOrOpps={stGaps}
+                nextSteps={stNext}
+                gapsHeading="Optimization Opportunities (Next Level)"
+              />
+            </View>
+          </View>
+
+          <View style={styles.twoCol}>
+            <View style={styles.col}>
+              <SectionBlock
+                title="Content Depth"
+                strengths={cdStrengths}
+                gapsOrOpps={cdGaps}
+                nextSteps={cdNext}
+                gapsHeading="Optimization Opportunities (Next Level)"
+              />
+            </View>
+            <View style={styles.col}>
+              <SectionBlock
+                title="Technical"
+                strengths={trStrengths}
+                gapsOrOpps={trGaps}
+                nextSteps={trNext}
+                gapsHeading="Optimization Opportunities (Next Level)"
+              />
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer} fixed>
+            <Text>Conversion Interactive Agency • GPTO Audit</Text>
+            <Text>{hostSlug(normalizedUrl)}</Text>
+          </View>
+        </Page>
+      </Document>
+    );
+
+    const pdfBuffer = await renderToBuffer(Pdf);
+
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="gpto-audit-${hostSlug(
+          normalizedUrl
+        )}.pdf"`,
+        "Cache-Control": "no-store"
+      }
+    });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e?.message || "Bad request" },
+      { status: 400 }
+    );
+  }
 }

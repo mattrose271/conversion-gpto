@@ -10,15 +10,18 @@ export default function AuditPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Mobile slider state
   const [activeSection, setActiveSection] = useState<0 | 1 | 2 | 3>(0);
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
+  // Progress bar state (estimated)
   const [progress, setProgress] = useState(0);
   const progressRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (loading) {
       setProgress(8);
+
       if (progressRef.current) window.clearInterval(progressRef.current);
 
       progressRef.current = window.setInterval(() => {
@@ -77,6 +80,9 @@ export default function AuditPage() {
   async function run() {
     if (loading) return;
 
+    const cleaned = url.trim();
+    if (!cleaned) return;
+
     setError(null);
     setReport(null);
     setLoading(true);
@@ -85,7 +91,7 @@ export default function AuditPage() {
       const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url: cleaned })
       });
 
       const data = await res.json();
@@ -102,20 +108,25 @@ export default function AuditPage() {
     } catch (e: any) {
       setLoading(false);
       setProgress(0);
-      setError(e.message || "Something went wrong");
+      setError(e?.message || "Something went wrong");
     }
   }
 
   const scores = report?.scores;
   const grades = report?.grades;
 
-  function fmt(label: string, scoreKey: string, gradeKey: string) {
+  function fmt(scoreKey: string, gradeKey: string) {
     const s = scores?.[scoreKey];
     const g = grades?.[gradeKey];
     if (typeof s === "number" && typeof g === "string") return `${s} / 100 (${g})`;
     if (typeof g === "string") return g;
     return "—";
   }
+
+  const tierSlug = String(report?.tier || "").toLowerCase();
+  const deliverablesHref = report?.tier
+    ? `/pricing#${tierSlug}-deliverables`
+    : "/pricing";
 
   return (
     <div>
@@ -176,6 +187,7 @@ export default function AuditPage() {
         }
       `}</style>
 
+      {/* Full-screen overlay while generating */}
       {loading && (
         <div
           style={{
@@ -240,13 +252,18 @@ export default function AuditPage() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
-              <div className="muted" style={{ fontSize: 12 }}>Estimated progress</div>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>{Math.min(progress, 100)}%</div>
+              <div className="muted" style={{ fontSize: 12 }}>
+                Estimated progress
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 800 }}>
+                {Math.min(progress, 100)}%
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Hero */}
       <section className="hero">
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
@@ -257,6 +274,7 @@ export default function AuditPage() {
             Paste a website URL to generate a scorecard + PDF download.
           </p>
 
+          {/* Input + Generate */}
           <form
             className="auditForm"
             onSubmit={(e) => {
@@ -284,6 +302,7 @@ export default function AuditPage() {
         </div>
       </section>
 
+      {/* Results */}
       <section className="section">
         <div className="container">
           {report ? (
@@ -294,17 +313,18 @@ export default function AuditPage() {
               </div>
 
               <div className="scoreRow" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {/* Scorecard */}
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
 
                   <table className="auditTable">
                     <tbody>
                       {[
-                        ["AI Clarity", fmt("AI Clarity", "aiReadiness", "aiReadiness")],
-                        ["Structure", fmt("Structure", "structure", "structure")],
-                        ["Content Depth", fmt("Content Depth", "contentDepth", "contentDepth")],
-                        ["Technical", fmt("Technical", "technicalReadiness", "technicalReadiness")],
-                        ["Overall", fmt("Overall", "overall", "overall")]
+                        ["AI Clarity", fmt("aiReadiness", "aiReadiness")],
+                        ["Structure", fmt("structure", "structure")],
+                        ["Content Depth", fmt("contentDepth", "contentDepth")],
+                        ["Technical", fmt("technicalReadiness", "technicalReadiness")],
+                        ["Overall", fmt("overall", "overall")]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
                           <td className="auditLabel">{k as string}</td>
@@ -323,10 +343,23 @@ export default function AuditPage() {
                       {(report.explanations?.tierWhy ?? []).slice(0, 2).join(" ")}
                     </div>
 
+                    {/* Buttons row */}
                     <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
                       <a className="btn" href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}>
                         Download PDF
                       </a>
+
+                      <a
+                        className="btn alt"
+                        href={`/contact?url=${encodeURIComponent(report.url)}&tier=${encodeURIComponent(report.tier)}`}
+                      >
+                        Contact Our Team
+                      </a>
+
+                      <a className="btn alt" href={deliverablesHref}>
+                        View Tier Deliverables
+                      </a>
+
                       <a className="btn alt" href="#details">
                         See Details
                       </a>
@@ -334,13 +367,22 @@ export default function AuditPage() {
                   </div>
                 </div>
 
+                {/* What scores mean */}
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
                   <ul style={{ marginBottom: 0 }}>
-                    <li><strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.</li>
-                    <li><strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.</li>
-                    <li><strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.</li>
-                    <li><strong>Technical:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.</li>
+                    <li>
+                      <strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
+                    </li>
+                    <li>
+                      <strong>Structure:</strong> How clearly pages are organized with titles, headings, and metadata.
+                    </li>
+                    <li>
+                      <strong>Content Depth:</strong> Whether pages provide enough specific information to avoid AI guessing.
+                    </li>
+                    <li>
+                      <strong>Technical:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
+                    </li>
                   </ul>
                   <small className="muted">Based on observable signals from scanned public pages.</small>
                 </div>
@@ -348,6 +390,7 @@ export default function AuditPage() {
 
               <div id="details" />
 
+              {/* Desktop details grid */}
               <div className="desktopOnly">
                 <div className="grid cols-2" style={{ marginTop: 16 }}>
                   {renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
@@ -359,6 +402,7 @@ export default function AuditPage() {
                 </div>
               </div>
 
+              {/* Mobile slider */}
               <div className="mobileOnly" style={{ marginTop: 16 }}>
                 <div className="card" style={{ marginBottom: 12 }}>
                   <strong style={{ display: "block", marginBottom: 10 }}>Report Sections</strong>
@@ -381,8 +425,12 @@ export default function AuditPage() {
                   </div>
 
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <button className="btn alt" type="button" onClick={goPrev}>← Prev</button>
-                    <button className="btn" type="button" onClick={goNext}>Next →</button>
+                    <button className="btn alt" type="button" onClick={goPrev}>
+                      ← Prev
+                    </button>
+                    <button className="btn" type="button" onClick={goNext}>
+                      Next →
+                    </button>
                   </div>
 
                   <div className="sectionHint">Tip: Swipe left/right on the section below.</div>

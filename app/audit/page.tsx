@@ -10,13 +10,14 @@ export default function AuditPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Mobile slider state
-  const [activeSection, setActiveSection] = useState<0 | 1 | 2 | 3>(0);
-  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
-
   // Progress bar state (estimated)
   const [progress, setProgress] = useState(0);
   const progressRef = useRef<number | null>(null);
+
+  // Slider state (details)
+  const [activeSlide, setActiveSlide] = useState(0);
+  const sliderRef = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (loading) {
@@ -46,42 +47,8 @@ export default function AuditPage() {
     };
   }, [loading]);
 
-  function goPrev() {
-    setActiveSection((s) => ((s + 3) % 4) as 0 | 1 | 2 | 3);
-  }
-  function goNext() {
-    setActiveSection((s) => ((s + 1) % 4) as 0 | 1 | 2 | 3);
-  }
-
-  function onTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-  }
-
-  function onTouchEnd(e: React.TouchEvent) {
-    const start = touchStartRef.current;
-    if (!start) return;
-
-    const t = e.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    const dt = Date.now() - start.t;
-
-    touchStartRef.current = null;
-
-    if (dt > 900) return;
-    if (Math.abs(dx) < 55) return;
-    if (Math.abs(dy) > 80) return;
-
-    if (dx < 0) goNext();
-    else goPrev();
-  }
-
   async function run() {
     if (loading) return;
-
-    const cleaned = url.trim();
-    if (!cleaned) return;
 
     setError(null);
     setReport(null);
@@ -91,20 +58,26 @@ export default function AuditPage() {
       const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: cleaned })
+        body: JSON.stringify({ url })
       });
-
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Audit failed");
+
+      // zod errors can come back as array
+      if (!res.ok) {
+        const msg =
+          data?.error ||
+          (Array.isArray(data) ? data?.[0]?.message : null) ||
+          "Audit failed";
+        throw new Error(msg);
+      }
 
       setProgress(100);
       setReport(data);
-      
+
+      // Persist recommended tier for later flows if needed
       try {
         window.localStorage.setItem("gpto_recommended_tier", String(data.tier || ""));
       } catch {}
-
-      setActiveSection(0);
 
       setTimeout(() => {
         setLoading(false);
@@ -113,25 +86,80 @@ export default function AuditPage() {
     } catch (e: any) {
       setLoading(false);
       setProgress(0);
-      setError(e?.message || "Something went wrong");
+      setError(e.message || "Something went wrong");
     }
   }
 
-  const scores = report?.scores;
-  const grades = report?.grades;
+  // --- Slider helpers (details cards) ---
+  function onSliderScroll() {
+    const el = sliderRef.current;
+    if (!el) return;
 
-  function fmt(scoreKey: string, gradeKey: string) {
-    const s = scores?.[scoreKey];
-    const g = grades?.[gradeKey];
-    if (typeof s === "number" && typeof g === "string") return `${s} / 100 (${g})`;
-    if (typeof g === "string") return g;
-    return "—";
+    if (rafRef.current) return;
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null;
+
+      const slides = Array.from(el.querySelectorAll<HTMLElement>("[data-audit-slide='1']"));
+      if (!slides.length) return;
+
+      const containerCenter = el.scrollLeft + el.clientWidth / 2;
+
+      let bestIdx = 0;
+      let bestDist = Infinity;
+
+      slides.forEach((s, idx) => {
+        const slideCenter = s.offsetLeft + s.clientWidth / 2;
+        const dist = Math.abs(slideCenter - containerCenter);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = idx;
+        }
+      });
+
+      setActiveSlide(bestIdx);
+    });
   }
 
-  const tierSlug = String(report?.tier || "").toLowerCase();
-  const deliverablesHref = report?.tier
-    ? `/pricing#${tierSlug}-deliverables`
-    : "/pricing";
+  function scrollToSlide(i: number) {
+    const el = sliderRef.current;
+    if (!el) return;
+    const slides = Array.from(el.querySelectorAll<HTMLElement>("[data-audit-slide='1']"));
+    const target = slides[i];
+    if (!target) return;
+
+    el.scrollTo({
+      left: target.offsetLeft - (el.clientWidth - target.clientWidth) / 2,
+      behavior: "smooth"
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, []);
+
+  const g = report?.grades;
+
+  // Friendly score rendering (supports either "A/B/C/D" or "0..100 + grade")
+  function scoreCell(label: string, key: string) {
+    const scoreKey = `score_${key}`;
+    const score = report?.scores?.[key] ?? report?.[scoreKey];
+    const grade = g?.[key] ?? g?.[key === "aiClarity" ? "aiReadiness" : key] ?? g?.aiReadiness;
+
+    if (typeof score === "number") return `${Math.round(score)} / 100 (${grade || "-"})`;
+    return `${grade || "-"}`;
+  }
+
+  const aiKey =
+    g?.aiClarity !== undefined
+      ? "aiClarity"
+      : g?.aiReadiness !== undefined
+      ? "aiReadiness"
+      : "aiReadiness";
 
   return (
     <div>
@@ -142,54 +170,38 @@ export default function AuditPage() {
           100% { transform: translateX(160%); opacity: 0.0; }
         }
 
-        .mobileOnly { display: none; }
-        .desktopOnly { display: block; }
-
-        .auditTable { width: 100%; border-collapse: collapse; }
-        .auditTable td { padding: 10px 6px; vertical-align: top; }
+        .auditTable td { padding: 10px 6px; }
         .auditTable tr { border-bottom: 1px solid rgba(0,0,0,.08); }
-        .auditLabel { font-weight: 800; }
-        .auditValue { text-align: right; font-weight: 900; }
 
-        .segRow {
+        /* Audit detail slider */
+        .auditSlider {
           display: flex;
-          gap: 8px;
+          gap: 14px;
           overflow-x: auto;
-          padding-bottom: 6px;
+          scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
+          padding: 4px 2px 12px;
+          scrollbar-width: none;
+
+          overscroll-behavior-x: contain;
+          scroll-snap-stop: always;
+          touch-action: pan-x;
         }
-        .segRow::-webkit-scrollbar { display: none; }
-        .sectionHint { font-size: 12px; opacity: 0.7; margin-top: 8px; }
-
-        .auditBlock {
-          height: auto !important;
-          max-height: none !important;
-          overflow: visible !important;
+        .auditSlider::-webkit-scrollbar { display: none; }
+        .auditSlide {
+          scroll-snap-align: center;
+          flex: 0 0 92%;
+          max-width: 720px;
         }
-
-        .swipeArea { touch-action: pan-y; }
-
-        @media (max-width: 900px) {
-          .mobileOnly { display: block; }
-          .desktopOnly { display: none; }
-
-          .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr !important; }
-          .container { padding-left: 16px !important; padding-right: 16px !important; }
-          h1 { font-size: 34px !important; line-height: 1.05 !important; }
-
-          .auditForm { flex-direction: column !important; align-items: stretch !important; }
-          .auditForm input { width: 100% !important; min-width: 0 !important; }
-          .auditForm .btn, .auditForm .btn.alt { width: 100% !important; text-align: center !important; }
-
-          .scoreRow { display: grid !important; grid-template-columns: 1fr !important; gap: 12px !important; }
-          .auditLabel { font-size: 15px !important; }
-          .auditValue { font-size: 15px !important; }
+        @media (min-width: 900px) {
+          .auditSlider { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; overflow: visible; padding: 0; scroll-snap-type: none; touch-action: auto; }
+          .auditSlide { flex: initial; max-width: none; }
         }
 
-        @media (max-width: 380px) {
-          h1 { font-size: 30px !important; }
-          .auditTable td { padding: 8px 4px; }
-        }
+        .auditDots { display:flex; justify-content:center; gap:8px; margin-top: 10px; }
+        .auditDotBtn { width: 10px; height: 10px; border-radius: 999px; background: rgba(0,0,0,.18); border: none; padding:0; cursor:pointer; }
+        .auditDotActive { background: var(--brand-red); }
+        @media (min-width: 900px) { .auditDots { display:none; } }
       `}</style>
 
       {/* Full-screen overlay while generating */}
@@ -268,7 +280,7 @@ export default function AuditPage() {
         </div>
       )}
 
-      {/* Hero */}
+      {/* Branded hero */}
       <section className="hero">
         <div className="container">
           <span className="badge">Conversion Interactive Agency</span>
@@ -279,21 +291,20 @@ export default function AuditPage() {
             Paste a website URL to generate a scorecard + PDF download.
           </p>
 
-          {/* Input + Generate */}
+          {/* Input + Generate (branded) */}
           <form
-            className="auditForm"
             onSubmit={(e) => {
               e.preventDefault();
               if (!loading && url.trim()) run();
             }}
-            style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}
+            style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}
           >
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter Website URL here"
+              placeholder="example.com"
               aria-label="Website URL"
-              style={{ flex: 1, minWidth: 0 }}
+              style={{ minWidth: 260, flex: 1 }}
             />
             <button className="btn" type="submit" disabled={loading || !url.trim()}>
               {loading ? "Generating…" : "Generate"}
@@ -317,23 +328,23 @@ export default function AuditPage() {
                 {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"}
               </div>
 
-              <div className="scoreRow" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="grid cols-2" style={{ alignItems: "start" }}>
                 {/* Scorecard */}
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
 
-                  <table className="auditTable">
+                  <table className="auditTable" style={{ width: "100%", borderCollapse: "collapse" }}>
                     <tbody>
                       {[
-                        ["AI Clarity", fmt("aiReadiness", "aiReadiness")],
-                        ["Structure", fmt("structure", "structure")],
-                        ["Content Depth", fmt("contentDepth", "contentDepth")],
-                        ["Technical", fmt("technicalReadiness", "technicalReadiness")],
-                        ["Overall", fmt("overall", "overall")]
+                        ["AI Clarity", scoreCell("AI Clarity", aiKey)],
+                        ["Structure", scoreCell("Structure", "structure")],
+                        ["Content Depth", scoreCell("Content Depth", "contentDepth")],
+                        ["Technical", scoreCell("Technical", "technicalReadiness")],
+                        ["Overall", scoreCell("Overall", "overall")]
                       ].map(([k, v]) => (
                         <tr key={String(k)}>
-                          <td className="auditLabel">{k as string}</td>
-                          <td className="auditValue">{v as string}</td>
+                          <td style={{ fontWeight: 800 }}>{k as string}</td>
+                          <td style={{ textAlign: "right", fontWeight: 900 }}>{v as string}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -348,32 +359,28 @@ export default function AuditPage() {
                       {(report.explanations?.tierWhy ?? []).slice(0, 2).join(" ")}
                     </div>
 
-                    {/* Buttons row */}
                     <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
                       <a className="btn" href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}>
                         Download PDF
                       </a>
-
-                      <a
-                        className="btn alt"
-                        href={`/contact?url=${encodeURIComponent(report.url)}&tier=${encodeURIComponent(report.tier)}`}
-                      >
-                        Contact Our Team
-                      </a>
-
-                      <a
-                        className="btn alt"
-                        href={`/pricing?tier=${encodeURIComponent(report.tier)}&url=${encodeURIComponent(
-                          report.url
-                        )}#${String(report.tier || "").toLowerCase()}-deliverables`}
-                        >
-                          View Tier Deliverables
-                      </a>
-
-
-
                       <a className="btn alt" href="#details">
                         See Details
+                      </a>
+                      <a
+                        className="btn alt"
+                        href={`/pricing?tier=${encodeURIComponent(report.tier || "")}&url=${encodeURIComponent(
+                          report.url || ""
+                        )}`}
+                      >
+                        View Tier Deliverables
+                      </a>
+                      <a
+                        className="btn alt"
+                        href={`/contact?tier=${encodeURIComponent(report.tier || "")}&url=${encodeURIComponent(
+                          report.url || ""
+                        )}`}
+                      >
+                        Contact Our Team
                       </a>
                     </div>
                   </div>
@@ -382,7 +389,7 @@ export default function AuditPage() {
                 {/* What scores mean */}
                 <div className="card">
                   <h3 style={{ marginTop: 0 }}>What these scores mean</h3>
-                  <ul style={{ marginBottom: 0 }}>
+                  <ul>
                     <li>
                       <strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
                     </li>
@@ -396,71 +403,78 @@ export default function AuditPage() {
                       <strong>Technical:</strong> Crawlability and machine signals like clean indexing, low errors, and structured metadata.
                     </li>
                   </ul>
-                  <small className="muted">Based on observable signals from scanned public pages.</small>
+                  <small className="muted">
+                    These are based on observable signals from scanned public pages.
+                  </small>
                 </div>
               </div>
 
               <div id="details" />
 
-              {/* Desktop details grid */}
-              <div className="desktopOnly">
-                <div className="grid cols-2" style={{ marginTop: 16 }}>
-                  {renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
-                  {renderBlock("Structure", report.explanations?.perCategory?.structure)}
-                </div>
-                <div className="grid cols-2" style={{ marginTop: 16 }}>
-                  {renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {renderBlock("Technical", report.explanations?.perCategory?.technicalReadiness)}
-                </div>
-              </div>
-
-              {/* Mobile slider */}
-              <div className="mobileOnly" style={{ marginTop: 16 }}>
-                <div className="card" style={{ marginBottom: 12 }}>
-                  <strong style={{ display: "block", marginBottom: 10 }}>Report Sections</strong>
-
-                  <div className="segRow">
-                    {["AI Clarity", "Structure", "Content Depth", "Technical"].map((label, idx) => {
-                      const isActive = activeSection === idx;
-                      return (
-                        <button
-                          key={label}
-                          className={`btn ${isActive ? "" : "alt"}`}
-                          style={{ whiteSpace: "nowrap" }}
-                          onClick={() => setActiveSection(idx as 0 | 1 | 2 | 3)}
-                          type="button"
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
+              {/* Detail blocks as swipe slider on mobile */}
+              <div style={{ marginTop: 16 }}>
+                <div
+                  ref={sliderRef}
+                  className="auditSlider"
+                  onScroll={onSliderScroll}
+                  aria-label="Audit details"
+                >
+                  <div className="auditSlide" data-audit-slide="1">
+                    {renderBlock(
+                      "AI Clarity",
+                      report.explanations?.perCategory?.aiReadiness || report.explanations?.perCategory?.aiClarity,
+                      report.tier,
+                      report.url
+                    )}
                   </div>
 
-                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <button className="btn alt" type="button" onClick={goPrev}>
-                      ← Prev
-                    </button>
-                    <button className="btn" type="button" onClick={goNext}>
-                      Next →
-                    </button>
+                  <div className="auditSlide" data-audit-slide="1">
+                    {renderBlock(
+                      "Structure",
+                      report.explanations?.perCategory?.structure,
+                      report.tier,
+                      report.url
+                    )}
                   </div>
 
-                  <div className="sectionHint">Tip: Swipe left/right on the section below.</div>
+                  <div className="auditSlide" data-audit-slide="1">
+                    {renderBlock(
+                      "Content Depth",
+                      report.explanations?.perCategory?.contentDepth,
+                      report.tier,
+                      report.url
+                    )}
+                  </div>
+
+                  <div className="auditSlide" data-audit-slide="1">
+                    {renderBlock(
+                      "Technical",
+                      report.explanations?.perCategory?.technicalReadiness,
+                      report.tier,
+                      report.url
+                    )}
+                  </div>
                 </div>
 
-                <div className="swipeArea" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-                  {activeSection === 0 && renderBlock("AI Clarity", report.explanations?.perCategory?.aiReadiness)}
-                  {activeSection === 1 && renderBlock("Structure", report.explanations?.perCategory?.structure)}
-                  {activeSection === 2 && renderBlock("Content Depth", report.explanations?.perCategory?.contentDepth)}
-                  {activeSection === 3 && renderBlock("Technical", report.explanations?.perCategory?.technicalReadiness)}
+                <div className="auditDots" aria-label="Audit detail navigation">
+                  {[0, 1, 2, 3].map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`auditDotBtn ${i === activeSlide ? "auditDotActive" : ""}`}
+                      onClick={() => scrollToSlide(i)}
+                      aria-label={`Go to section ${i + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
             </>
           ) : (
             <div className="card">
-              <h3 style={{ marginTop: 0 }}>Run an AI Visibility Audit</h3>
+              <h3 style={{ marginTop: 0 }}>Run an audit</h3>
               <p className="muted">
-                Enter your website above to see how AI systems interpret it — you’ll get a scorecard and downloadable report with clear next steps.
+                Enter your website above and hit <strong>Generate</strong> to get a scorecard, a shareable PDF,
+                and a clear path to improve AI visibility.
               </p>
             </div>
           )}
@@ -476,12 +490,18 @@ export default function AuditPage() {
   );
 }
 
-function renderBlock(title: string, block: any) {
-  const strengths: string[] =
-    (block?.strengths?.length ? block.strengths : ["Solid foundation observed at this scan depth."]).slice(0, 6);
+function renderBlock(title: string, block: any, tier: string, websiteUrl: string) {
+  const strengths: string[] = (block?.strengths?.length
+    ? block.strengths
+    : ["Solid foundation observed at this scan depth."]
+  ).slice(0, 6);
 
   const gapsRaw: string[] = (block?.gaps ?? []).slice(0, 6);
   const improvementsRaw: string[] = (block?.improvements ?? []).slice(0, 6);
+
+  const noMajorGaps =
+    gapsRaw.length === 0 ||
+    (gapsRaw.length === 1 && String(gapsRaw[0]).toLowerCase().includes("no major"));
 
   const defaultOpportunities: Record<string, string[]> = {
     "AI Clarity": [
@@ -492,7 +512,7 @@ function renderBlock(title: string, block: any) {
     ],
     "Structure": [
       "Align page titles + H1s to the exact questions people search for (improves AI extractability and clarity).",
-      "Standardize templates: one clear H1, supporting H2s, and consistent internal linking between key pages.",
+      "Standardize templates: one clear H1, supporting H2 sections, and consistent internal linking between key pages.",
       "Add meta descriptions to your highest-traffic pages to improve snippet clarity and indexing confidence.",
       "Create clearer topic clusters (service → FAQs → case studies) so AI systems understand page relationships."
     ],
@@ -510,37 +530,47 @@ function renderBlock(title: string, block: any) {
     ]
   };
 
-  const nextLevel: string[] =
-    (improvementsRaw.length ? improvementsRaw : defaultOpportunities[title] ?? [
-      "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."
-    ]).slice(0, 6);
+  const nextLevel: string[] = (improvementsRaw.length
+    ? improvementsRaw
+    : defaultOpportunities[title] ?? [
+        "Even strong sites benefit from ongoing AI optimization: refine clarity, consistency, and machine-readability across more pages."
+      ]
+  ).slice(0, 6);
 
-  const hasGaps =
-    gapsRaw.length > 0 &&
-    !(gapsRaw.length === 1 && String(gapsRaw[0]).toLowerCase().includes("no major"));
+  const gapsHeading = noMajorGaps ? "Optimization Opportunities (Next Level)" : "Gaps";
+  const gapsList = noMajorGaps
+    ? nextLevel
+    : gapsRaw.length
+    ? gapsRaw
+    : ["No critical issues detected — focus shifts to optimization opportunities."];
+
+  const pricingHref = `/pricing?tier=${encodeURIComponent(tier || "")}&url=${encodeURIComponent(
+    websiteUrl || ""
+  )}`;
 
   return (
-    <section className="card auditBlock">
+    <section className="card" style={{ height: "100%" }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
 
       <strong>Strengths</strong>
       <ul>{strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
 
-      {hasGaps && (
-        <>
-          <strong>Gaps</strong>
-          <ul>{gapsRaw.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
-        </>
-      )}
+      <strong>{gapsHeading}</strong>
+      <ul>{gapsList.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
 
-      <strong>Optimization Opportunities (Next Level)</strong>
-      <ul>{nextLevel.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+      {/* REPLACES "Recommended Next Steps" */}
+      <div style={{ marginTop: 14 }}>
+        <a
+          className="btn"
+          href={pricingHref}
+          style={{ width: "100%", textAlign: "center", display: "block" }}
+        >
+          Learn More About Our Packages
+        </a>
+      </div>
 
-      <strong>Recommended Next Steps</strong>
-      <ul>{nextLevel.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
-
-      {!hasGaps && (
-        <small className="muted">
+      {noMajorGaps && (
+        <small className="muted" style={{ display: "block", marginTop: 10 }}>
           Even when foundations are strong, AI visibility improves through ongoing refinement as models and queries evolve.
         </small>
       )}

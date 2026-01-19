@@ -99,6 +99,11 @@ export default function AuditPage() {
 
       setProgress(100);
       setReport(data);
+      
+      try {
+        window.localStorage.setItem("gpto_recommended_tier", String(data.tier || ""));
+      } catch {}
+
       setActiveSection(0);
 
       setTimeout(() => {

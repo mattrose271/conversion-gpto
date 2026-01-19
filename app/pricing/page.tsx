@@ -45,7 +45,7 @@ export default function PricingPage({
       <section className="section" style={{ background: "var(--brand-gray-200)" }}>
         <div className="container">
           {/* Recommended badge ONLY appears if highlightTier exists (i.e., from audit) */}
-          <PricingCards highlightTier={highlightTier} website={website} />
+           <PricingCards allowHighlight={true} website={website} />
 
           {/* Deliverables anchors for your #gold-deliverables links */}
           <div style={{ marginTop: 28 }} />

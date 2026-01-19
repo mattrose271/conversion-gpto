@@ -76,7 +76,7 @@ export default function ContactClient({
             Contact <span style={{ color: "var(--brand-red)" }}>Our Team</span>
           </h1>
           <p style={{ maxWidth: 720 }}>
-            Send us your details and we’ll follow up with next steps for your GPTO plan.
+            Send us your details and we’ll follow up with next steps for your custom GPTO plan.
           </p>
         </div>
       </section>

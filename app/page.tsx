@@ -9,9 +9,9 @@ export default function HomePage() {
           <span className="badge">Conversion Interactive Agency</span>
 
           <h1>
-            BUILDING YOUR <span style={{ color: "var(--brand-red)" }}>BRAND</span>
+            BE SEEN <span style={{ color: "var(--brand-red)" }}>ONLINE</span>
             <br />
-            GROWING YOUR <span style={{ color: "var(--brand-red)" }}>BUSINESS</span>
+            WITH <span style={{ color: "var(--brand-red)" }}>AI VISIBILITY OPTIMIZATION</span>
           </h1>
 
           <p style={{ maxWidth: 820 }}>
@@ -91,7 +91,7 @@ export default function HomePage() {
               <li>Clear scorecard across AI clarity, structure, content depth, and technical readiness</li>
               <li>Specific recommendations mapped to what your site is missing</li>
               <li>PDF report you can share internally</li>
-              <li>Optional implementation support from our team</li>
+              <li>Direct link to our team to discuss GPTO packages</li>
             </ul>
 
             <small className="muted">
@@ -103,18 +103,18 @@ export default function HomePage() {
 
       {/* PRICING (this is what powers /#pricing) */}
       <section id="pricing" className="section" style={{ background: "var(--brand-gray-200)" }}>
-        <div className="container">
-          <h2 style={{ marginBottom: 10 }}>Plans & Pricing</h2>
-          <p className="muted" style={{ maxWidth: 760, marginTop: 0 }}>
-            GPTO service packages are designed to improve AI-driven discovery, visibility, and conversion performance.
-            <br />
-            <strong>3 month commitment</strong> applies to all tiers.
-          </p>
+  <div className="container">
+    <h2 style={{ marginBottom: 10 }}>Plans & Pricing</h2>
+    <p className="muted" style={{ maxWidth: 760, marginTop: 0 }}>
+      Choose the tier that fits your goals.
+      <br />
+      <strong>3 month commitment</strong> applies to all tiers.
+    </p>
 
-          {/* Cards in the style of your screenshot + “Recommended” badge */}
-          <PricingCards />
-        </div>
-      </section>
+    {/* NO recommended banner on homepage */}
+    <PricingCards />
+  </div>
+</section>
 
       {/* CTA */}
       <section className="section">

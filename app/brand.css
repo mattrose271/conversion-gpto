@@ -31,3 +31,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radiu
 label{font-weight:600;font-size:14px}
 form .row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
 small.muted{color:#666}
+/* Prevent the whole page from drifting horizontally on mobile */
+html, body {
+  overflow-x: hidden;
+}

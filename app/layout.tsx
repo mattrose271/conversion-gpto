@@ -24,55 +24,154 @@ export default function Root({ children }: { children: React.ReactNode }) {
             borderBottom: "1px solid rgba(0,0,0,.06)"
           }}
         >
-          <div
-            className="container"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "14px 0",
-              gap: 14
-            }}
-          >
-            <a href="/" style={{ fontWeight: 900, letterSpacing: -0.3 }}>
+          <div className="container navWrap">
+            <a href="/" className="brand">
               ConversionIA
             </a>
 
-            <nav
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                flexWrap: "wrap",
-                justifyContent: "flex-end"
-              }}
-            >
-              <a href="/" style={{ fontWeight: 700 }}>
-                HOME
-              </a>
-              <a href="/pricing" style={{ fontWeight: 700 }}>
-                PRICING
-              </a>
-              <a href="/contact" style={{ fontWeight: 700 }}>
-                CONTACT
-              </a>
-
-              {/* CTA at the end */}
-              <a
-                href="/audit"
-                className="btn"
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 999,
-                  fontWeight: 900,
-                  whiteSpace: "nowrap"
-                }}
-              >
+            {/* Desktop nav */}
+            <nav className="navDesktop" aria-label="Primary navigation">
+              <a href="/">HOME</a>
+              <a href="/pricing">PRICING</a>
+              <a href="/contact">CONTACT</a>
+              <a href="/audit" className="btn navCta">
                 FREE GPTO AUDIT
               </a>
             </nav>
+
+            {/* Mobile menu (no JS) */}
+            <details className="navMobile">
+              <summary aria-label="Open menu" className="burger">
+                <span className="burgerIcon" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </summary>
+
+              <div className="mobilePanel" role="menu" aria-label="Mobile menu">
+                <a role="menuitem" href="/">
+                  HOME
+                </a>
+                <a role="menuitem" href="/pricing">
+                  PRICING
+                </a>
+                <a role="menuitem" href="/contact">
+                  CONTACT
+                </a>
+
+                <a role="menuitem" href="/audit" className="btn mobileCta">
+                  FREE GPTO AUDIT
+                </a>
+              </div>
+            </details>
           </div>
         </header>
+
+        <style>{`
+          .navWrap{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            padding:14px 0;
+          }
+          .brand{
+            font-weight:900;
+            letter-spacing:-0.3px;
+            text-decoration:none;
+            color:inherit;
+            white-space:nowrap;
+          }
+
+          /* Desktop nav */
+          .navDesktop{
+            display:flex;
+            align-items:center;
+            gap:14px;
+            flex-wrap:wrap;
+            justify-content:flex-end;
+          }
+          .navDesktop a{
+            font-weight:700;
+            text-decoration:none;
+            color:inherit;
+          }
+          .navCta{
+            padding:10px 14px;
+            border-radius:999px;
+            font-weight:900;
+            white-space:nowrap;
+            text-decoration:none;
+            display:inline-block;
+          }
+
+          /* Mobile menu uses <details> */
+          .navMobile{
+            display:none;
+            position:relative;
+          }
+          .burger{
+            list-style:none;
+            cursor:pointer;
+            border:1px solid rgba(0,0,0,.10);
+            background:rgba(0,0,0,.04);
+            border-radius:12px;
+            padding:10px 12px;
+            user-select:none;
+          }
+          .burger::-webkit-details-marker{ display:none; }
+
+          .burgerIcon{
+            display:inline-flex;
+            flex-direction:column;
+            gap:4px;
+          }
+          .burgerIcon span{
+            display:block;
+            width:18px;
+            height:2px;
+            background:rgba(0,0,0,.65);
+            border-radius:999px;
+          }
+
+          .mobilePanel{
+            position:absolute;
+            right:0;
+            top:52px;
+            width:min(92vw, 320px);
+            background:rgba(255,255,255,.96);
+            border:1px solid rgba(0,0,0,.10);
+            border-radius:16px;
+            box-shadow:0 16px 50px rgba(0,0,0,.12);
+            padding:10px;
+            display:grid;
+            gap:6px;
+          }
+          .mobilePanel a{
+            padding:12px 12px;
+            border-radius:12px;
+            text-decoration:none;
+            color:inherit;
+            font-weight:800;
+            background:rgba(0,0,0,.03);
+          }
+          .mobilePanel a:hover{
+            background:rgba(0,0,0,.06);
+          }
+          .mobileCta{
+            margin-top:6px;
+            text-align:center;
+            display:block;
+            border-radius:999px;
+          }
+
+          /* Mobile breakpoint */
+          @media (max-width: 820px){
+            .navDesktop{ display:none; }
+            .navMobile{ display:block; }
+          }
+        `}</style>
 
         {children}
       </body>

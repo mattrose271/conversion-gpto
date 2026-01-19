@@ -291,7 +291,7 @@ export default function AuditPage() {
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="example.com"
+              placeholder="Enter Website URL here"
               aria-label="Website URL"
               style={{ flex: 1, minWidth: 0 }}
             />

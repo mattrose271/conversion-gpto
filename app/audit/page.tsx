@@ -361,9 +361,13 @@ export default function AuditPage() {
                         Contact Our Team
                       </a>
 
-                      <a className="btn alt" href={deliverablesHref}>
+                      <a
+                        className="btn alt"
+                        href={`/pricing?tier=${encodeURIComponent(report.tier)}#${String(report.tier).toLowerCase()}-deliverables`}
+                        >
                         View Tier Deliverables
                       </a>
+
 
                       <a className="btn alt" href="#details">
                         See Details

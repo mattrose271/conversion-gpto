@@ -1,84 +1,77 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-export default function PricingCards() {
-  const [recommended, setRecommended] = useState<string>("");
+type Props = {
+  /** If set, highlights that tier with a "Recommended" badge. If undefined, no badge shown. */
+  highlightTier?: "Bronze" | "Silver" | "Gold";
+  /** If true, shows a short "deliverables" list and a Get Started button */
+  showGetStarted?: boolean;
+  /** Prefills contact form website */
+  website?: string;
+};
 
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const qp = params.get("tier");
-      const ls = window.localStorage.getItem("gpto_recommended_tier");
-
-      const norm = (v: string | null) =>
-        (v || "").trim().toLowerCase();
-
-      const mapped =
-        norm(qp) === "bronze" ? "Bronze" :
-        norm(qp) === "silver" ? "Silver" :
-        norm(qp) === "gold" ? "Gold" :
-        norm(ls) === "bronze" ? "Bronze" :
-        norm(ls) === "silver" ? "Silver" :
-        norm(ls) === "gold" ? "Gold" :
-        "";
-
-      setRecommended(mapped);
-    } catch {
-      setRecommended("");
-    }
+export default function PricingCards({
+  highlightTier,
+  showGetStarted = true,
+  website = ""
+}: Props) {
+  const plans = useMemo(() => {
+    return [
+      {
+        tier: "Bronze" as const,
+        title: "Foundation",
+        price: "$999",
+        sub: "Corrects core issues and establishes your AI-visibility performance baseline.",
+        bullets: [
+          "Essential schema markup added to your most important pages.",
+          "AI-powered technical + content audit with clear action steps.",
+          "Refinement of your top on-page messaging.",
+          "Competitor snapshot covering search signals and basic sentiment.",
+          "Content recommendations: 4–6 content ideas monthly.",
+          "A clean PDF scorecard summarizing findings and opportunities."
+        ]
+      },
+      {
+        tier: "Silver" as const,
+        title: "Growth",
+        price: "$2,499",
+        sub: "Strengthens your authority and provides competitive insight.",
+        bullets: [
+          "Full-site schema implementation (Organization, Service/Product, Local, FAQ).",
+          "Five-competitor analysis revealing search gaps, strengths, and opportunities.",
+          "Structured authority + content improvement plan built from GPTO’s framework.",
+          "Lightweight telemetry module to track engagement on key pages.",
+          "Quarterly re-audit to measure progress and adjust strategy."
+        ]
+      },
+      {
+        tier: "Gold" as const,
+        title: "Elite",
+        price: "$4,999",
+        sub: "Automates optimization and delivers advanced competitive intelligence.",
+        bullets: [
+          "Complete real-time optimization for live search, intent, and behavior signals.",
+          "Dynamic schema and adaptive SEO updated based on real-time data.",
+          "10-competitor, multi-market authority + sentiment mapping.",
+          "AI-supported reputation and link-building guidance.",
+          "Monthly telemetry insights + executive performance dashboard."
+        ]
+      }
+    ];
   }, []);
 
-  const plans = useMemo(() => ([
-    {
-      tier: "Bronze",
-      title: "Foundation",
-      price: "$999",
-      sub: "Corrects core issues and establishes your AI-visibility performance baseline.",
-      bullets: [
-        "Essential schema markup added to your most important pages.",
-        "AI-powered technical + content audit with clear action steps.",
-        "Refinement of your top on-page messaging.",
-        "Competitor snapshot covering search signals and basic sentiment.",
-        "Content recommendations: 4–6 content ideas monthly.",
-        "A clean PDF scorecard summarizing findings and opportunities."
-      ]
-    },
-    {
-      tier: "Silver",
-      title: "Growth",
-      price: "$2,499",
-      sub: "Strengthens your authority and provides competitive insight.",
-      bullets: [
-        "Full-site schema implementation (Organization, Service/Product, Local, FAQ).",
-        "Five-competitor analysis revealing search gaps, strengths, and opportunities.",
-        "Structured authority + content improvement plan built from GPTO’s framework.",
-        "Lightweight telemetry module to track engagement on key pages.",
-        "Quarterly re-audit to measure progress and adjust strategy."
-      ]
-    },
-    {
-      tier: "Gold",
-      title: "Elite",
-      price: "$4,999",
-      sub: "Automates optimization and delivers advanced competitive intelligence.",
-      bullets: [
-        "Complete real-time optimization for live search, intent, and behavior signals.",
-        "Dynamic schema and adaptive SEO updated based on real-time data.",
-        "10-competitor, multi-market authority + sentiment mapping.",
-        "AI-supported reputation and link-building guidance.",
-        "Monthly telemetry insights + executive performance dashboard."
-      ]
-    }
-  ]), []);
+  function getStartedHref(tier: string) {
+    const qs = new URLSearchParams();
+    if (tier) qs.set("tier", tier);
+    if (website) qs.set("url", website);
+    return `/contact?${qs.toString()}`;
+  }
 
   return (
-    <div
-      className="grid cols-3"
-      style={{ alignItems: "stretch", gap: 18, marginTop: 16 }}
-    >
+    <div className="grid cols-3" style={{ alignItems: "stretch", gap: 18, marginTop: 16 }}>
       {plans.map((p) => {
-        const isRec = recommended && p.tier === recommended;
+        const isRec = highlightTier && p.tier === highlightTier;
 
         return (
           <div
@@ -96,6 +89,7 @@ export default function PricingCards() {
               minHeight: 520
             }}
           >
+            {/* Recommended badge ONLY if highlightTier provided */}
             {isRec && (
               <div
                 style={{
@@ -134,19 +128,20 @@ export default function PricingCards() {
               ))}
             </ul>
 
-            <div style={{ marginTop: "auto", paddingTop: 16 }}>
-              <a
-                className="btn"
-                href={`/contact?tier=${encodeURIComponent(p.tier)}`}
-                style={{ width: "100%", textAlign: "center", display: "block" }}
-              >
-                Get Started
-              </a>
-
-              <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
-                3 month commitment
+            {showGetStarted && (
+              <div style={{ marginTop: "auto", paddingTop: 16 }}>
+                <a
+                  className="btn"
+                  href={getStartedHref(p.tier)}
+                  style={{ width: "100%", textAlign: "center", display: "block" }}
+                >
+                  Get Started
+                </a>
+                <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
+                  3 month commitment
+                </div>
               </div>
-            </div>
+            )}
           </div>
         );
       })}

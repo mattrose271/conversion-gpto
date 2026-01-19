@@ -112,7 +112,8 @@ export default function HomePage() {
     </p>
 
     {/* NO recommended banner on homepage */}
-    <PricingCards />
+    <PricingCards allowHighlight={false} />
+ />
   </div>
 </section>
 

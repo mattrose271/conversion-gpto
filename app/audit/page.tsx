@@ -199,9 +199,15 @@ export default function AuditPage() {
         }
 
         .auditDots { display:flex; justify-content:center; gap:8px; margin-top: 10px; }
-        .auditDotBtn { width: 10px; height: 10px; border-radius: 999px; background: rgba(0,0,0,.18); border: none; padding:0; cursor:pointer; }
+        .auditDotBtn { width: 10px; height: 10px; border-radius: 999px; background: rgba(0,0,0,.18); border: none; padding:0; cursor:pointer; min-width: 44px; min-height: 44px; }
         .auditDotActive { background: var(--brand-red); }
         @media (min-width: 900px) { .auditDots { display:none; } }
+
+        /* Mobile optimization for buttons and grid */
+        @media (max-width: 768px) {
+          .grid.cols-2 { grid-template-columns: 1fr; }
+          .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+        }
       `}</style>
 
       {/* Full-screen overlay while generating */}
@@ -380,7 +386,7 @@ export default function AuditPage() {
                           report.url || ""
                         )}`}
                       >
-                        Contact Our Team
+                        Contact About GPTO Packages
                       </a>
                     </div>
                   </div>

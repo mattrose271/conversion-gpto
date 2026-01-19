@@ -37,7 +37,7 @@ function hostSlug(url: string) {
   }
 }
 
-const BRAND_RED = "#B32025";
+const BRAND_RED = "#C20F2C";
 
 const styles = StyleSheet.create({
   page: {
@@ -49,21 +49,23 @@ const styles = StyleSheet.create({
     color: "#111"
   },
   topBar: {
-    height: 6,
+    height: 8,
     backgroundColor: BRAND_RED,
-    marginBottom: 14
+    marginBottom: 18
   },
   header: {
-    marginBottom: 14
+    marginBottom: 18
   },
   title: {
-    fontSize: 20,
-    fontWeight: 700
+    fontSize: 22,
+    fontWeight: 700,
+    color: "#111"
   },
   subTitle: {
-    marginTop: 4,
-    fontSize: 11,
-    color: "#444"
+    marginTop: 6,
+    fontSize: 12,
+    color: BRAND_RED,
+    fontWeight: 600
   },
   meta: {
     marginTop: 6,
@@ -71,16 +73,19 @@ const styles = StyleSheet.create({
     color: "#666"
   },
   pill: {
-    marginTop: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: "#F3F3F3",
+    backgroundColor: "#FDECEE",
+    borderWidth: 1,
+    borderColor: "#F8D4D8",
     alignSelf: "flex-start"
   },
   pillText: {
     fontSize: 10,
-    color: "#222"
+    color: "#111",
+    fontWeight: 600
   },
 
   section: {
@@ -152,9 +157,12 @@ const styles = StyleSheet.create({
     right: 34,
     bottom: 18,
     fontSize: 9,
-    color: "#777",
+    color: "#666",
     flexDirection: "row",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "#EFEFEF",
+    paddingTop: 8
   },
   hr: {
     marginTop: 12,
@@ -190,13 +198,11 @@ function SectionBlock({
   title,
   strengths,
   gapsOrOpps,
-  nextSteps,
   gapsHeading
 }: {
   title: string;
   strengths: string[];
   gapsOrOpps: string[];
-  nextSteps: string[];
   gapsHeading: string;
 }) {
   return (
@@ -214,14 +220,6 @@ function SectionBlock({
       <Text style={styles.boxTitle}>{gapsHeading}</Text>
       {gapsOrOpps.map((s, i) => (
         <Text key={`g-${i}`} style={styles.bullet}>
-          • {s}
-        </Text>
-      ))}
-
-      <View style={{ marginTop: 8 }} />
-      <Text style={styles.boxTitle}>Recommended Next Steps</Text>
-      {nextSteps.map((s, i) => (
-        <Text key={`n-${i}`} style={styles.bullet}>
           • {s}
         </Text>
       ))}
@@ -276,15 +274,11 @@ export async function GET(req: Request) {
     const cd = per?.contentDepth || {};
     const tr = per?.technicalReadiness || {};
 
-    // Make sure we never show “Not observed...” in PDF; use “Next level” language
+    // Make sure we never show "Not observed..." in PDF; use "Next level" language
     const aiStrengths = bullets(ai?.strengths, "Solid foundation observed at this scan depth.");
     const aiGaps = bullets(
       ai?.gaps,
       "No critical issues detected — focus shifts to ongoing AI clarity improvements."
-    );
-    const aiNext = bullets(
-      ai?.improvements,
-      "Refine clarity and consistency across core pages to strengthen AI interpretation."
     );
 
     const stStrengths = bullets(st?.strengths, "Solid foundation observed at this scan depth.");
@@ -292,29 +286,17 @@ export async function GET(req: Request) {
       st?.gaps,
       "No critical issues detected — focus shifts to refinement and standardization."
     );
-    const stNext = bullets(
-      st?.improvements,
-      "Standardize templates and strengthen internal linking between key pages."
-    );
 
     const cdStrengths = bullets(cd?.strengths, "Solid foundation observed at this scan depth.");
     const cdGaps = bullets(
       cd?.gaps,
       "No critical issues detected — focus shifts to expanding decision-support content."
     );
-    const cdNext = bullets(
-      cd?.improvements,
-      "Expand thin pages with specifics: process, proof points, and next steps."
-    );
 
     const trStrengths = bullets(tr?.strengths, "Solid foundation observed at this scan depth.");
     const trGaps = bullets(
       tr?.gaps,
       "No critical issues detected — focus shifts to deeper technical optimization."
-    );
-    const trNext = bullets(
-      tr?.improvements,
-      "Improve machine-readable signals (schema, canonicals) and reduce crawl friction."
     );
 
     const generatedAt = new Date().toLocaleString();
@@ -364,7 +346,6 @@ export async function GET(req: Request) {
                 title="AI Clarity"
                 strengths={aiStrengths}
                 gapsOrOpps={aiGaps}
-                nextSteps={aiNext}
                 gapsHeading="Optimization Opportunities (Next Level)"
               />
             </View>
@@ -373,7 +354,6 @@ export async function GET(req: Request) {
                 title="Structure"
                 strengths={stStrengths}
                 gapsOrOpps={stGaps}
-                nextSteps={stNext}
                 gapsHeading="Optimization Opportunities (Next Level)"
               />
             </View>
@@ -385,7 +365,6 @@ export async function GET(req: Request) {
                 title="Content Depth"
                 strengths={cdStrengths}
                 gapsOrOpps={cdGaps}
-                nextSteps={cdNext}
                 gapsHeading="Optimization Opportunities (Next Level)"
               />
             </View>
@@ -394,7 +373,6 @@ export async function GET(req: Request) {
                 title="Technical"
                 strengths={trStrengths}
                 gapsOrOpps={trGaps}
-                nextSteps={trNext}
                 gapsHeading="Optimization Opportunities (Next Level)"
               />
             </View>
@@ -402,7 +380,7 @@ export async function GET(req: Request) {
 
           {/* Footer */}
           <View style={styles.footer} fixed>
-            <Text>Conversion Interactive Agency • GPTO Audit</Text>
+            <Text style={{ fontWeight: 600 }}>Conversion Interactive Agency • GPTO Audit</Text>
             <Text>{hostSlug(normalizedUrl)}</Text>
           </View>
         </Page>

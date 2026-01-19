@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       // IMPORTANT: This must be a verified sender in Resend.
       from: "GPTO Audit <no-reply@conversionia.com>",
       to: [to],
-      replyTo: input.email,
+      reply_to: input.email,
       subject,
       text
     });

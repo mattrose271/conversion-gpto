@@ -28,7 +28,7 @@ export default function PricingPage({
             Plans & <span style={{ color: "var(--brand-red)" }}>Pricing</span>
           </h1>
 
-          <p className="muted" style={{ maxWidth: 820 }}>
+          <p className="muted" style={{ maxWidth: "100%" }}>
             {highlightTier
               ? `Based on your audit, we recommend the ${highlightTier} tier. Review the package below and click Get Started to contact our team.`
               : "Browse our tiers below. Run the audit to receive a tailored recommendation."}
@@ -36,10 +36,10 @@ export default function PricingPage({
 
           {!highlightTier && (
             <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-              <a className="btn" href="/audit">
+              <a className="btn" href="/audit" style={{ minWidth: "min(100%, 200px)" }}>
                 Run the Audit
               </a>
-              <a className="btn alt" href="/contact">
+              <a className="btn alt" href="/contact" style={{ minWidth: "min(100%, 200px)" }}>
                 Contact Our Team
               </a>
             </div>

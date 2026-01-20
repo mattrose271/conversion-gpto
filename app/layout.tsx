@@ -119,6 +119,11 @@ export default function Root({ children }: { children: React.ReactNode }) {
             border-radius:12px;
             padding:10px 12px;
             user-select:none;
+            min-width:44px;
+            min-height:44px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
           }
           .burger::-webkit-details-marker{ display:none; }
 
@@ -140,6 +145,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
             right:0;
             top:52px;
             width:min(92vw, 320px);
+            max-width:calc(100vw - 16px);
             background:rgba(255,255,255,.96);
             border:1px solid rgba(0,0,0,.10);
             border-radius:16px;
@@ -147,6 +153,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
             padding:10px;
             display:grid;
             gap:6px;
+            z-index:100;
           }
           .mobilePanel a{
             padding:12px 12px;
@@ -155,6 +162,9 @@ export default function Root({ children }: { children: React.ReactNode }) {
             color:inherit;
             font-weight:800;
             background:rgba(0,0,0,.03);
+            min-height:44px;
+            display:flex;
+            align-items:center;
           }
           .mobilePanel a:hover{
             background:rgba(0,0,0,.06);
@@ -166,8 +176,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
             border-radius:999px;
           }
 
-          /* Mobile breakpoint */
-          @media (max-width: 820px){
+          /* Mobile breakpoint - standardize to 900px */
+          @media (max-width: 899px){
             .navDesktop{ display:none; }
             .navMobile{ display:block; }
           }

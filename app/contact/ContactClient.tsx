@@ -75,8 +75,8 @@ export default function ContactClient({
           <h1>
             Contact <span style={{ color: "var(--brand-red)" }}>Our Team</span>
           </h1>
-          <p style={{ maxWidth: 720 }}>
-            Send us your details and we’ll follow up with next steps for your custom GPTO plan.
+          <p style={{ maxWidth: "100%" }}>
+            Send us your details and we'll follow up with next steps for your custom GPTO plan.
           </p>
         </div>
       </section>
@@ -97,7 +97,7 @@ export default function ContactClient({
             )}
 
             <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                 <label>
                   Name
                   <input required value={name} onChange={(e) => setName(e.target.value)} />
@@ -123,7 +123,7 @@ export default function ContactClient({
                 />
               </label>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                 <label>
                   Email Address
                   <input
@@ -154,14 +154,14 @@ export default function ContactClient({
                   rows={5}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Tell us what you want to improve or what you’re aiming for."
+                  placeholder="Tell us what you want to improve or what you're aiming for."
                 />
               </label>
 
               {error && <p style={{ color: "var(--brand-red)", margin: 0 }}>{error}</p>}
               {done && <p style={{ margin: 0, fontWeight: 800 }}>{done}</p>}
 
-              <button className="btn" type="submit" disabled={loading}>
+              <button className="btn" type="submit" disabled={loading} style={{ width: "100%" }}>
                 {loading ? "Sending…" : "Send to our team"}
               </button>
 

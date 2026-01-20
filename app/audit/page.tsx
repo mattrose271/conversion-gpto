@@ -203,9 +203,8 @@ export default function AuditPage() {
         .auditDotActive { background: var(--brand-red); }
         @media (min-width: 900px) { .auditDots { display:none; } }
 
-        /* Mobile optimization for buttons and grid */
-        @media (max-width: 768px) {
-          .grid.cols-2 { grid-template-columns: 1fr; }
+        /* Mobile optimization for buttons - grid handled in brand.css */
+        @media (max-width: 899px) {
           .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
         }
       `}</style>
@@ -293,7 +292,7 @@ export default function AuditPage() {
           <h1>
             GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Readiness Audit
           </h1>
-          <p style={{ maxWidth: 720 }}>
+          <p style={{ maxWidth: "100%" }}>
             Paste a website URL to generate a scorecard + PDF download.
           </p>
 
@@ -310,12 +309,12 @@ export default function AuditPage() {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="example.com"
               aria-label="Website URL"
-              style={{ minWidth: 260, flex: 1 }}
+              style={{ minWidth: "min(100%, 260px)", flex: 1 }}
             />
-            <button className="btn" type="submit" disabled={loading || !url.trim()}>
+            <button className="btn" type="submit" disabled={loading || !url.trim()} style={{ minWidth: "min(100%, 140px)" }}>
               {loading ? "Generating…" : "Generate"}
             </button>
-            <a href="/pricing" className="btn alt">
+            <a href="/pricing" className="btn alt" style={{ minWidth: "min(100%, 140px)" }}>
               See Plans
             </a>
           </form>

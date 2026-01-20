@@ -14,20 +14,20 @@ export default function HomePage() {
             WITH <span style={{ color: "var(--brand-red)" }}>AI VISIBILITY OPTIMIZATION</span>
           </h1>
 
-          <p style={{ maxWidth: 820 }}>
+          <p style={{ maxWidth: "100%", fontSize: "inherit" }}>
             GPTO helps your website perform in AI-driven search and answer engines — improving clarity,
             structure, content depth, and machine-readability so your brand is easier to understand,
             trust, and recommend.
           </p>
 
           <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-            <a href="/audit" className="btn">
+            <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }}>
               Run the Audit
             </a>
-            <a href="#pricing" className="btn alt">
+            <a href="#pricing" className="btn alt" style={{ minWidth: "min(100%, 200px)" }}>
               See Plans
             </a>
-            <a href="/contact" className="btn alt">
+            <a href="/contact" className="btn alt" style={{ minWidth: "min(100%, 200px)" }}>
               Contact Our Team
             </a>
           </div>
@@ -76,10 +76,10 @@ export default function HomePage() {
             </ul>
 
             <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-              <a className="btn" href="/audit">
+              <a className="btn" href="/audit" style={{ minWidth: "min(100%, 200px)" }}>
                 Start with the Audit
               </a>
-              <a className="btn alt" href="#pricing">
+              <a className="btn alt" href="#pricing" style={{ minWidth: "min(100%, 200px)" }}>
                 View Packages
               </a>
             </div>
@@ -105,7 +105,7 @@ export default function HomePage() {
       <section id="pricing" className="section" style={{ background: "var(--brand-gray-200)" }}>
   <div className="container">
     <h2 style={{ marginBottom: 10 }}>Plans & Pricing</h2>
-    <p className="muted" style={{ maxWidth: 760, marginTop: 0 }}>
+    <p className="muted" style={{ maxWidth: "100%", marginTop: 0 }}>
       Choose the tier that fits your goals.
       <br />
       <strong>3 month commitment</strong> applies to all tiers.
@@ -124,15 +124,15 @@ export default function HomePage() {
             <h2 style={{ marginTop: 0 }}>
               Want us to implement the recommendations for you?
             </h2>
-            <p className="muted" style={{ maxWidth: 760, margin: "0 auto" }}>
+            <p className="muted" style={{ maxWidth: "100%", margin: "0 auto" }}>
               Run the audit, then contact our team to review the results and choose the right tier.
             </p>
 
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-              <a href="/audit" className="btn">
+              <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }}>
                 Run the Audit
               </a>
-              <a href="/contact" className="btn alt">
+              <a href="/contact" className="btn alt" style={{ minWidth: "min(100%, 200px)" }}>
                 Contact Our Team
               </a>
             </div>

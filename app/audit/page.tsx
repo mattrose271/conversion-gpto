@@ -288,7 +288,7 @@ export default function AuditPage() {
       {/* Branded hero */}
       <section className="hero">
         <div className="container">
-          <span className="badge">Conversion Interactive Agency</span>
+          <a href="/audit" className="badge">Run the Free Audit</a>
           <h1>
             GPTO <span style={{ color: "var(--brand-red)" }}>AI</span> Readiness Audit
           </h1>

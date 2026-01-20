@@ -23,7 +23,7 @@ export default function PricingPage({
     <div>
       <section className="hero">
         <div className="container">
-          <span className="badge">Conversion Interactive Agency</span>
+          <a href="/audit" className="badge">Run the Free Audit</a>
           <h1>
             Plans & <span style={{ color: "var(--brand-red)" }}>Pricing</span>
           </h1>

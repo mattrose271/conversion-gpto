@@ -68,10 +68,20 @@ a{color:var(--brand-red);text-decoration:none}
   gap:8px;
   padding:6px 10px;
   border-radius:999px;
-  background:#FDECEE;
-  color:var(--brand-red-dark);
+  background:var(--brand-red);
+  color:white;
   font-size:13px;
   font-weight:600;
+  text-decoration:none;
+  transition:background 0.2s, opacity 0.2s;
+  cursor:pointer;
+}
+.badge:hover{
+  background:var(--brand-red-dark);
+  opacity:0.9;
+}
+.badge:active{
+  opacity:0.8;
 }
 
 /* Section - responsive padding */

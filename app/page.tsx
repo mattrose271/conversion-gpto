@@ -6,7 +6,7 @@ export default function HomePage() {
       {/* HERO */}
       <section className="hero">
         <div className="container">
-          <span className="badge">Conversion Interactive Agency</span>
+          <a href="/audit" className="badge">Run the Free Audit</a>
 
           <h1>
             BE SEEN <span style={{ color: "var(--brand-red)" }}>ONLINE</span>

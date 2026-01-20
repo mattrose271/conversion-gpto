@@ -8,10 +8,12 @@ export const runtime = "nodejs";
 const Body = z.object({ url: z.string().url() });
 
 function toGrade(score: number) {
-  if (score >= 85) return "A";
-  if (score >= 70) return "B";
-  if (score >= 50) return "C";
-  return "D";
+  if (score === 100) return "A+";
+  if (score >= 90) return "A";
+  if (score >= 80) return "B";
+  if (score >= 70) return "C";
+  if (score >= 60) return "D";
+  return "F";
 }
 
 function containsAIText(text: string) {
@@ -195,7 +197,7 @@ function score(pages: any[]) {
 
   // Tier mapping (simple + explainable)
   let tier: "Bronze" | "Silver" | "Gold";
-  if (overall === "A" || (overall === "B" && grades.technicalReadiness !== "D" && grades.contentDepth !== "D")) tier = "Gold";
+  if (overall === "A+" || overall === "A" || (overall === "B" && grades.technicalReadiness !== "D" && grades.technicalReadiness !== "F" && grades.contentDepth !== "D" && grades.contentDepth !== "F")) tier = "Gold";
   else if (overall === "B" || overall === "C") tier = "Silver";
   else tier = "Bronze";
 

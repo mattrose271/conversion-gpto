@@ -25,9 +25,14 @@ export default function Root({ children }: { children: React.ReactNode }) {
           }}
         >
           <div className="container navWrap">
-            <a href="/" className="brand">
-              ConversionIA
-            </a>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <a href="/" className="brand">
+                Conversion
+              </a>
+              <a href="/login" className="loginLink" style={{ textDecoration: "none", color: "inherit", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                Login →
+              </a>
+            </div>
 
             {/* Desktop nav */}
             <nav className="navDesktop" aria-label="Primary navigation">
@@ -50,6 +55,10 @@ export default function Root({ children }: { children: React.ReactNode }) {
               </summary>
 
               <div className="mobilePanel" role="menu" aria-label="Mobile menu">
+                <a role="menuitem" href="/login" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  Login →
+                </a>
+                <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "4px 0" }} />
                 <a role="menuitem" href="/">
                   HOME
                 </a>
@@ -82,6 +91,14 @@ export default function Root({ children }: { children: React.ReactNode }) {
             text-decoration:none;
             color:inherit;
             white-space:nowrap;
+          }
+          .loginLink{
+            font-size:14px;
+            opacity:0.8;
+            transition:opacity 0.2s;
+          }
+          .loginLink:hover{
+            opacity:1;
           }
 
           /* Desktop nav */

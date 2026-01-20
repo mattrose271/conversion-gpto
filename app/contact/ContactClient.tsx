@@ -71,7 +71,7 @@ export default function ContactClient({
     <div>
       <section className="hero">
         <div className="container">
-          <span className="badge">Conversion Interactive Agency</span>
+          <a href="/audit" className="badge">Run the Free Audit</a>
           <h1>
             Contact <span style={{ color: "var(--brand-red)" }}>Our Team</span>
           </h1>

@@ -27,10 +27,12 @@ function normalizeInputUrl(input: string) {
 }
 
 function toGrade(score: number) {
-  if (score >= 85) return "A";
-  if (score >= 70) return "B";
-  if (score >= 50) return "C";
-  return "D";
+  if (score === 100) return "A+";
+  if (score >= 90) return "A";
+  if (score >= 80) return "B";
+  if (score >= 70) return "C";
+  if (score >= 60) return "D";
+  return "F";
 }
 
 function clamp0to100(n: number) {
@@ -307,7 +309,7 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
 
   // Tier mapping
   let tier: "Bronze" | "Silver" | "Gold";
-  if (grades.overall === "A" || (grades.overall === "B" && grades.technicalReadiness !== "D" && grades.contentDepth !== "D")) {
+  if (grades.overall === "A+" || grades.overall === "A" || (grades.overall === "B" && grades.technicalReadiness !== "D" && grades.technicalReadiness !== "F" && grades.contentDepth !== "D" && grades.contentDepth !== "F")) {
     tier = "Gold";
   } else if (grades.overall === "B" || grades.overall === "C") {
     tier = "Silver";

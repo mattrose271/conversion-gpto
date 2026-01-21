@@ -9,6 +9,7 @@ export const metadata = {
 };
 
 import "./brand.css";
+import Logo from "./components/Logo";
 
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
@@ -26,8 +27,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
         >
           <div className="container navWrap">
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <a href="/" className="brand">
-                Conversion
+              <a href="/" className="brand" style={{ display: "flex", alignItems: "center" }}>
+                <Logo />
               </a>
               <a href="/login" className="loginLink" style={{ textDecoration: "none", color: "inherit", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
                 Login →
@@ -91,6 +92,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
             text-decoration:none;
             color:inherit;
             white-space:nowrap;
+            display:flex;
+            align-items:center;
+          }
+          .brand img{
+            height:32px;
+            width:auto;
+            display:block;
           }
           .loginLink{
             font-size:14px;

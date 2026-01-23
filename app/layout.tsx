@@ -199,6 +199,12 @@ export default function Root({ children }: { children: React.ReactNode }) {
             text-align:center;
             display:block;
             border-radius:999px;
+            background:var(--brand-red) !important;
+            color:white !important;
+          }
+          .mobileCta:hover{
+            background:var(--brand-red-dark) !important;
+            color:white !important;
           }
 
           /* Mobile breakpoint - standardize to 900px */

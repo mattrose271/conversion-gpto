@@ -129,6 +129,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
             white-space:nowrap;
             text-decoration:none;
             display:inline-block;
+            color:white !important;
           }
 
           /* Mobile menu uses <details> */

@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import Resend from "resend";
+import { Resend } from "resend";
 
 const Body = z.object({
   email: z.string().email()
 });
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   try {
@@ -23,6 +21,8 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    const resend = new Resend(apiKey);
 
     try {
       await resend.emails.send({

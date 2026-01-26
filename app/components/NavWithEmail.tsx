@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import EmailModal from "./EmailModal";
 
 export default function NavWithEmail() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
+  const mobileDetailsRef = useRef<HTMLDetailsElement>(null);
 
   function handleAuditClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -15,6 +16,10 @@ export default function NavWithEmail() {
 
   function handleModalSuccess() {
     setIsModalOpen(false);
+    // Close the mobile dropdown menu
+    if (mobileDetailsRef.current) {
+      mobileDetailsRef.current.removeAttribute("open");
+    }
     router.push("/audit");
   }
 
@@ -31,7 +36,7 @@ export default function NavWithEmail() {
       </nav>
 
       {/* Mobile menu (no JS) */}
-      <details className="navMobile">
+      <details ref={mobileDetailsRef} className="navMobile">
         <summary aria-label="Open menu" className="burger">
           <span className="burgerIcon" aria-hidden="true">
             <span />

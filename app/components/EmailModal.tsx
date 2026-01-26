@@ -46,32 +46,24 @@ export default function EmailModal({ isOpen, onClose, onSuccess }: EmailModalPro
         body: JSON.stringify({ email })
       });
 
-      if (!res.ok) {
-        let errorMessage = "Failed to submit email. Please try again.";
-        try {
-          const data = await res.json();
-          errorMessage = data?.error || errorMessage;
-        } catch {
-          // If response is not JSON, use status text or default message
-          errorMessage = res.statusText || errorMessage;
+      // Try to parse response, but don't block on errors
+      try {
+        const data = await res.json();
+        if (!res.ok) {
+          console.warn("Email submission warning:", data?.error || "Unknown error");
         }
-        throw new Error(errorMessage);
+      } catch {
+        // If response parsing fails, log but continue
+        console.warn("Email submission warning: Could not parse response");
       }
 
-      const data = await res.json();
-      if (!data.ok) {
-        throw new Error(data?.error || "Failed to submit email. Please try again.");
-      }
-
-      // Success - redirect to audit page
+      // Always proceed to audit page regardless of email submission result
       onSuccess();
     } catch (err: any) {
-      // Handle network errors
-      if (err.name === "TypeError" && err.message.includes("fetch")) {
-        setError("Network error. Please check your connection and try again.");
-      } else {
-        setError(err?.message || "Something went wrong. Please try again.");
-      }
+      // Log error but still proceed
+      console.warn("Email submission error:", err?.message || "Unknown error");
+      // Still redirect to audit page even if there's an error
+      onSuccess();
     } finally {
       setLoading(false);
     }

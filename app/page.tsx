@@ -22,7 +22,7 @@ export default function HomePage() {
 
           <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
             <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }}>
-              Run the Audit
+              Run the Free Audit
             </a>
             <a href="#pricing" className="btn alt" style={{ minWidth: "min(100%, 200px)" }}>
               See Plans

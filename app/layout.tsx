@@ -10,6 +10,7 @@ export const metadata = {
 
 import "./brand.css";
 import Logo from "./components/Logo";
+import NavWithEmail from "./components/NavWithEmail";
 
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
@@ -30,51 +31,9 @@ export default function Root({ children }: { children: React.ReactNode }) {
               <a href="/" className="brand" style={{ display: "flex", alignItems: "center" }}>
                 <Logo />
               </a>
-              <a href="/login" className="loginLink" style={{ textDecoration: "none", color: "inherit", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                Login →
-              </a>
             </div>
 
-            {/* Desktop nav */}
-            <nav className="navDesktop" aria-label="Primary navigation">
-              <a href="/">HOME</a>
-              <a href="/pricing">PRICING</a>
-              <a href="/contact">CONTACT</a>
-              <a href="/audit" className="btn navCta">
-                FREE GPTO AUDIT
-              </a>
-            </nav>
-
-            {/* Mobile menu (no JS) */}
-            <details className="navMobile">
-              <summary aria-label="Open menu" className="burger">
-                <span className="burgerIcon" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </summary>
-
-              <div className="mobilePanel" role="menu" aria-label="Mobile menu">
-                <a role="menuitem" href="/login" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                  Login →
-                </a>
-                <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "4px 0" }} />
-                <a role="menuitem" href="/">
-                  HOME
-                </a>
-                <a role="menuitem" href="/pricing">
-                  PRICING
-                </a>
-                <a role="menuitem" href="/contact">
-                  CONTACT
-                </a>
-
-                <a role="menuitem" href="/audit" className="btn mobileCta">
-                  FREE GPTO AUDIT
-                </a>
-              </div>
-            </details>
+            <NavWithEmail />
           </div>
         </header>
 

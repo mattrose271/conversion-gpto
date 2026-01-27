@@ -1,7 +1,9 @@
-import PricingCards from "./PricingCards";
+"use client";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import PricingCards from "./PricingCards";
+import EmailModal from "../components/EmailModal";
 
 function normalizeTier(t: string | undefined) {
   const v = (t || "").trim().toLowerCase();
@@ -11,19 +13,34 @@ function normalizeTier(t: string | undefined) {
   return undefined;
 }
 
-export default function PricingPage({
-  searchParams
-}: {
-  searchParams?: { tier?: string; url?: string };
-}) {
-  const highlightTier = normalizeTier(searchParams?.tier);
-  const website = (searchParams?.url || "").toString();
+export default function PricingPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightTier = normalizeTier(searchParams?.get("tier") || undefined);
+  const website = (searchParams?.get("url") || "").toString();
+
+  function handleAuditClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    setIsModalOpen(true);
+  }
+
+  function handleModalSuccess() {
+    setIsModalOpen(false);
+    router.push("/audit");
+  }
 
   return (
     <div>
+      <EmailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleModalSuccess}
+      />
+
       <section className="hero">
         <div className="container">
-          <a href="/audit" className="badge">Run the Free Audit</a>
+          <a href="/audit" className="badge" onClick={handleAuditClick}>Run the Free Audit</a>
           <h1>
             Plans & <span style={{ color: "var(--brand-red)" }}>Pricing</span>
           </h1>
@@ -36,7 +53,7 @@ export default function PricingPage({
 
           {!highlightTier && (
             <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-              <a className="btn" href="/audit" style={{ minWidth: "min(100%, 200px)" }}>
+              <a className="btn" href="/audit" style={{ minWidth: "min(100%, 200px)" }} onClick={handleAuditClick}>
                 Run the Audit
               </a>
               <a className="btn alt" href="/contact" style={{ minWidth: "min(100%, 200px)" }}>

@@ -1,12 +1,36 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import PricingCards from "./pricing/PricingCards";
+import EmailModal from "./components/EmailModal";
 
 export default function HomePage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+
+  function handleAuditClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    setIsModalOpen(true);
+  }
+
+  function handleModalSuccess() {
+    setIsModalOpen(false);
+    router.push("/audit");
+  }
+
   return (
     <div>
+      <EmailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleModalSuccess}
+      />
+
       {/* HERO */}
       <section className="hero">
         <div className="container">
-          <a href="/audit" className="badge">Run the Free Audit</a>
+          <a href="/audit" className="badge" onClick={handleAuditClick}>Run the Free Audit</a>
 
           <h1>
             BE SEEN <span style={{ color: "var(--brand-red)" }}>ONLINE</span>
@@ -21,7 +45,7 @@ export default function HomePage() {
           </p>
 
           <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-            <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }}>
+            <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }} onClick={handleAuditClick}>
               Run the Free Audit
             </a>
             <a href="#pricing" className="btn alt" style={{ minWidth: "min(100%, 200px)" }}>
@@ -76,7 +100,7 @@ export default function HomePage() {
             </ul>
 
             <div style={{ display: "flex", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-              <a className="btn" href="/audit" style={{ minWidth: "min(100%, 200px)" }}>
+              <a className="btn" href="/audit" style={{ minWidth: "min(100%, 200px)" }} onClick={handleAuditClick}>
                 Start with the Audit
               </a>
               <a className="btn alt" href="#pricing" style={{ minWidth: "min(100%, 200px)" }}>
@@ -129,7 +153,7 @@ export default function HomePage() {
             </p>
 
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-              <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }}>
+              <a href="/audit" className="btn" style={{ minWidth: "min(100%, 200px)" }} onClick={handleAuditClick}>
                 Run the Audit
               </a>
               <a href="/contact" className="btn alt" style={{ minWidth: "min(100%, 200px)" }}>

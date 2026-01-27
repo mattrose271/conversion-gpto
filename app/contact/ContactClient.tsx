@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import EmailModal from "../components/EmailModal";
 
 export default function ContactClient({
   prefillWebsite,
@@ -9,6 +11,8 @@ export default function ContactClient({
   prefillWebsite: string;
   tier: string;
 }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [website, setWebsite] = useState(prefillWebsite || "");
@@ -20,6 +24,16 @@ export default function ContactClient({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function handleAuditClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    setIsModalOpen(true);
+  }
+
+  function handleModalSuccess() {
+    setIsModalOpen(false);
+    router.push("/audit");
+  }
 
   // If user lands here and prefillWebsite arrives, set it once
   useEffect(() => {
@@ -69,9 +83,15 @@ export default function ContactClient({
 
   return (
     <div>
+      <EmailModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleModalSuccess}
+      />
+
       <section className="hero">
         <div className="container">
-          <a href="/audit" className="badge">Run the Free Audit</a>
+          <a href="/audit" className="badge" onClick={handleAuditClick}>Run the Free Audit</a>
           <h1>
             Contact <span style={{ color: "var(--brand-red)" }}>Our Team</span>
           </h1>

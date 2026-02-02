@@ -65,7 +65,7 @@ export default function TierDeliverables({ tier, websiteUrl = "" }: TierDelivera
             rel="noopener noreferrer"
             style={{ width: "100%", textAlign: "center", display: "block" }}
           >
-            Schedule a Call with Sales
+            Connect with Us
           </a>
         </div>
       )}

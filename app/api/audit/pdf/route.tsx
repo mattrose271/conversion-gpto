@@ -227,6 +227,32 @@ function SectionBlock({
   );
 }
 
+function TableRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View style={[styles.scoreRow, last ? styles.scoreRowLast : null]}>
+      <Text style={styles.scoreLabel}>{label}</Text>
+      <Text style={styles.scoreValue}>{value}</Text>
+    </View>
+  );
+}
+
+function getWithGPTOGrade(currentGrade: string, dimension: string, grades: any): string {
+  const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
+  const currentIdx = gradeOrder.indexOf(currentGrade);
+  if (currentIdx === -1) return currentGrade;
+
+  let improvement = 1;
+  if (dimension === "SEO Strength" && (grades.structure === "D" || grades.structure === "F" || grades.technicalReadiness === "D" || grades.technicalReadiness === "F")) {
+    improvement = 2;
+  }
+  if (dimension === "AI Discoverability" && (grades.aiReadiness === "D" || grades.aiReadiness === "F")) {
+    improvement = 2;
+  }
+
+  const newIdx = Math.min(gradeOrder.length - 1, currentIdx + improvement);
+  return gradeOrder[newIdx];
+}
+
 export async function GET(req: Request) {
   try {
     // 1) Read URL from query
@@ -300,15 +326,29 @@ export async function GET(req: Request) {
     );
 
     const generatedAt = new Date().toLocaleString();
+    const businessInfo = report?.businessInfo || {};
+    const executiveSummary = report?.executiveSummary || "";
 
-    // 4) Build PDF
+    // Calculate performance summary dimensions
+    const seoCurrent = grades.structure && grades.technicalReadiness 
+      ? (grades.structure === "A" || grades.structure === "B") && (grades.technicalReadiness === "A" || grades.technicalReadiness === "B") ? "B" 
+        : (grades.structure === "C" || grades.technicalReadiness === "C") ? "C" : "D"
+      : "C";
+    const aiCurrent = grades.aiReadiness || "C";
+    const conversionCurrent = grades.contentDepth && grades.structure
+      ? (grades.contentDepth === "A" || grades.contentDepth === "B") && (grades.structure === "A" || grades.structure === "B") ? "B"
+        : (grades.contentDepth === "C" || grades.structure === "C") ? "C" : "D"
+      : "C";
+    const brandCurrent = grades.overall || grades.aiReadiness || "B-";
+
+    // 4) Build PDF with customer-facing template
     const Pdf = (
       <Document>
         <Page size="A4" style={styles.page}>
           <View style={styles.topBar} />
 
           <View style={styles.header}>
-            <Text style={styles.title}>GPTO AI Readiness Audit</Text>
+            <Text style={styles.title}>GPTO — Customer-Facing Output</Text>
             <Text style={styles.subTitle}>Conversion Interactive Agency</Text>
 
             <Text style={styles.meta}>
@@ -316,66 +356,215 @@ export async function GET(req: Request) {
               {"\n"}
               Generated: {generatedAt}
             </Text>
+          </View>
 
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>
-                Recommended GPTO Tier: <Text style={{ color: BRAND_RED }}>{tier}</Text>
-                {tierWhy ? ` — ${tierWhy}` : ""}
+          {/* 1. Executive Summary */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>1. Executive Summary</Text>
+            <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
+              {executiveSummary || "Executive summary not available."}
+            </Text>
+          </View>
+
+          {/* 2. Customer Snapshot */}
+          {businessInfo.businessName && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>2. Customer Snapshot</Text>
+              <View style={styles.box}>
+                <TableRow label="Business name" value={businessInfo.businessName || "—"} />
+                <TableRow label="Website" value={businessInfo.website || normalizedUrl} />
+                <TableRow label="Industry / segment" value={businessInfo.industry || "—"} />
+                <TableRow label="Business model" value={businessInfo.businessModel || "—"} />
+                <TableRow label="Primary audiences" value={businessInfo.primaryAudiences || "—"} />
+                <TableRow label="Primary conversions" value={businessInfo.primaryConversions || "—"} />
+                <TableRow label="Funnel notes" value={businessInfo.funnelNotes || "—"} last />
+              </View>
+            </View>
+          )}
+
+          {/* 3. Performance Summary Table */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>3. Plain-English Performance Summary</Text>
+            <Text style={[styles.muted, { fontSize: 9, marginBottom: 6 }]}>
+              Grades are directional, not performance claims.
+            </Text>
+            <View style={styles.box}>
+              <TableRow 
+                label="SEO Strength" 
+                value={`${seoCurrent} → ${getWithGPTOGrade(seoCurrent, "SEO Strength", grades)}`} 
+              />
+              <TableRow 
+                label="AI Discoverability" 
+                value={`${aiCurrent} → ${getWithGPTOGrade(aiCurrent, "AI Discoverability", grades)}`} 
+              />
+              <TableRow 
+                label="Conversion Clarity" 
+                value={`${conversionCurrent} → ${getWithGPTOGrade(conversionCurrent, "Conversion Clarity", grades)}`} 
+              />
+              <TableRow 
+                label="Brand Signal" 
+                value={`${brandCurrent} → ${getWithGPTOGrade(brandCurrent, "Brand Signal", grades)}`} 
+                last 
+              />
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer} fixed>
+            <Text style={{ fontWeight: 600 }}>Conversion Interactive Agency • GPTO Audit</Text>
+            <Text>{hostSlug(normalizedUrl)}</Text>
+          </View>
+        </Page>
+
+        {/* Page 2: Core GPTO Audit */}
+        <Page size="A4" style={styles.page}>
+          <View style={styles.topBar} />
+          <View style={styles.header}>
+            <Text style={styles.title}>4. Core GPTO Audit</Text>
+          </View>
+
+          {/* SEO & Technical Readiness */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SEO & Technical Readiness</Text>
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>A) Current Grade: {seoCurrent}</Text>
+              <Text style={styles.boxTitle}>B) Observed / Inferred Reality</Text>
+              <Text style={styles.bullet}>• {trStrengths[0] || stStrengths[0] || "Limited observable signals"}</Text>
+              <Text style={styles.bullet}>• {trGaps[0] || stGaps[0] || "No critical issues detected"}</Text>
+              <Text style={styles.boxTitle}>C) What GPTO Changes</Text>
+              <Text style={styles.bullet}>• Establishes consistent technical signals and structural clarity</Text>
+              <Text style={styles.bullet}>• Schema markup and metadata become standardized</Text>
+              <Text style={styles.boxTitle}>D) Expected Directional Outcome</Text>
+              <Text style={styles.bullet}>Improves from {seoCurrent} to {getWithGPTOGrade(seoCurrent, "SEO Strength", grades)} through structural improvements</Text>
+            </View>
+          </View>
+
+          {/* AI Discoverability */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>AI Discoverability & Entity Clarity</Text>
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>A) Current Grade: {aiCurrent}</Text>
+              <Text style={styles.boxTitle}>B) Observed / Inferred Reality</Text>
+              <Text style={styles.bullet}>• {aiStrengths[0] || "Limited observable signals"}</Text>
+              <Text style={styles.bullet}>• {aiGaps[0] || "No critical issues detected"}</Text>
+              <Text style={styles.boxTitle}>C) What GPTO Changes</Text>
+              <Text style={styles.bullet}>• Makes brand, services, and audiences explicitly readable by AI systems</Text>
+              <Text style={styles.bullet}>• Entity clarity improves through consistent language</Text>
+              <Text style={styles.boxTitle}>D) Expected Directional Outcome</Text>
+              <Text style={styles.bullet}>Improves from {aiCurrent} to {getWithGPTOGrade(aiCurrent, "AI Discoverability", grades)} through structural improvements</Text>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer} fixed>
+            <Text style={{ fontWeight: 600 }}>Conversion Interactive Agency • GPTO Audit</Text>
+            <Text>{hostSlug(normalizedUrl)}</Text>
+          </View>
+        </Page>
+
+        {/* Page 3: Conversion, Brand, Packages */}
+        <Page size="A4" style={styles.page}>
+          <View style={styles.topBar} />
+
+          {/* Conversion Architecture */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Conversion Architecture</Text>
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>A) Current Grade: {conversionCurrent}</Text>
+              <Text style={styles.boxTitle}>B) Observed / Inferred Reality</Text>
+              <Text style={styles.bullet}>• {cdStrengths[0] || "Limited observable signals"}</Text>
+              <Text style={styles.bullet}>• {cdGaps[0] || "No critical issues detected"}</Text>
+              <Text style={styles.boxTitle}>C) What GPTO Changes</Text>
+              <Text style={styles.bullet}>• Improves routing and qualification through clearer content depth</Text>
+              <Text style={styles.bullet}>• Users arrive better-informed, reducing self-selection errors</Text>
+              <Text style={styles.boxTitle}>D) Expected Directional Outcome</Text>
+              <Text style={styles.bullet}>Improves from {conversionCurrent} to {getWithGPTOGrade(conversionCurrent, "Conversion Clarity", grades)} through structural improvements</Text>
+            </View>
+          </View>
+
+          {/* Brand Differentiation */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Brand Differentiation & Signal Strength</Text>
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>A) Current Grade: {brandCurrent}</Text>
+              <Text style={styles.boxTitle}>B) Observed / Inferred Reality</Text>
+              <Text style={styles.bullet}>• Strong brand foundation observed</Text>
+              <Text style={styles.bullet}>• Inconsistent surfacing across discovery channels</Text>
+              <Text style={styles.boxTitle}>C) What GPTO Changes</Text>
+              <Text style={styles.bullet}>• Ensures brand signals are consistently surfaced</Text>
+              <Text style={styles.bullet}>• Differentiation becomes machine-readable</Text>
+              <Text style={styles.boxTitle}>D) Expected Directional Outcome</Text>
+              <Text style={styles.bullet}>Improves from {brandCurrent} to {getWithGPTOGrade(brandCurrent, "Brand Signal", grades)} through structural improvements</Text>
+            </View>
+          </View>
+
+          {/* Package Capability Table */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>5. Package Capability Tables</Text>
+            <View style={styles.box}>
+              <TableRow label="Core site structure" value="✓ / ✓ / ✓" />
+              <TableRow label="AI-readable schema" value="✓ / ✓ / ✓" />
+              <TableRow label="FAQ / How-To depth" value="— / ✓ / ✓" />
+              <TableRow label="Content scaling" value="— / ✓ / ✓" />
+              <TableRow label="Authority layering" value="— / — / ✓" />
+              <TableRow label="Long-term dominance" value="— / — / ✓" last />
+              <Text style={[styles.muted, { fontSize: 9, marginTop: 6 }]}>
+                Format: Bronze / Silver / Gold
               </Text>
             </View>
           </View>
 
+          {/* Footer */}
+          <View style={styles.footer} fixed>
+            <Text style={{ fontWeight: 600 }}>Conversion Interactive Agency • GPTO Audit</Text>
+            <Text>{hostSlug(normalizedUrl)}</Text>
+          </View>
+        </Page>
+
+        {/* Page 4: Growth, Strategy, Roadmap, Close */}
+        <Page size="A4" style={styles.page}>
+          <View style={styles.topBar} />
+
+          {/* Growth Progression */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Scorecard</Text>
-
-            <View style={styles.scoreTable}>
-              <ScoreRow label="AI Clarity" value={fmt("aiReadiness", "aiReadiness")} />
-              <ScoreRow label="Structure" value={fmt("structure", "structure")} />
-              <ScoreRow label="Content Depth" value={fmt("contentDepth", "contentDepth")} />
-              <ScoreRow label="Technical" value={fmt("technicalReadiness", "technicalReadiness")} />
-              <ScoreRow label="Overall" value={fmt("overall", "overall")} last />
-            </View>
-
-            <View style={styles.hr} />
-          </View>
-
-          {/* Detailed sections */}
-          <View style={styles.twoCol}>
-            <View style={styles.col}>
-              <SectionBlock
-                title="AI Clarity"
-                strengths={aiStrengths}
-                gapsOrOpps={aiGaps}
-                gapsHeading="Optimization Opportunities (Next Level)"
-              />
-            </View>
-            <View style={styles.col}>
-              <SectionBlock
-                title="Structure"
-                strengths={stStrengths}
-                gapsOrOpps={stGaps}
-                gapsHeading="Optimization Opportunities (Next Level)"
-              />
+            <Text style={styles.sectionTitle}>6. Growth Progression Tables</Text>
+            <View style={styles.box}>
+              <TableRow label="Bronze" value="B- (Signal clarity & noise reduction)" />
+              <TableRow label="Silver" value="B+ (Discoverability & efficiency)" />
+              <TableRow label="Gold" value="A (Authority & leadership)" last />
             </View>
           </View>
 
-          <View style={styles.twoCol}>
-            <View style={styles.col}>
-              <SectionBlock
-                title="Content Depth"
-                strengths={cdStrengths}
-                gapsOrOpps={cdGaps}
-                gapsHeading="Optimization Opportunities (Next Level)"
-              />
+          {/* Strategic Positioning */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>7. Strategic Positioning</Text>
+            <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
+              Bronze establishes clarity and control. Silver improves efficiency when ready. Gold is a long-term option for category leadership — not a requirement.
+            </Text>
+          </View>
+
+          {/* 90-Day Roadmap */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>8. 90-Day First Wins Roadmap</Text>
+            <View style={styles.box}>
+              <Text style={styles.bullet}>Weeks 1–2: Structural fixes & signal cleanup</Text>
+              <Text style={styles.bullet}>Weeks 3–6: AI readability & routing improvements</Text>
+              <Text style={styles.bullet}>Weeks 7–12: Refinement & optional expansion</Text>
             </View>
-            <View style={styles.col}>
-              <SectionBlock
-                title="Technical"
-                strengths={trStrengths}
-                gapsOrOpps={trGaps}
-                gapsHeading="Optimization Opportunities (Next Level)"
-              />
-            </View>
+          </View>
+
+          {/* Final Close */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>10. Final Close</Text>
+            <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
+              <Text style={{ fontWeight: 700 }}>Why this matters now:</Text> AI-driven search and answer engines are becoming the primary way people discover brands.
+            </Text>
+            <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 6 }}>
+              <Text style={{ fontWeight: 700 }}>What success looks like:</Text> Your brand is correctly understood, found, and recommended by AI tools.
+            </Text>
+            <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 6 }}>
+              <Text style={{ fontWeight: 700 }}>Next step:</Text> Review the recommendations above and choose a package that fits your current needs.
+            </Text>
           </View>
 
           {/* Footer */}

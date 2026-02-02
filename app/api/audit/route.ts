@@ -258,6 +258,412 @@ function computeAnswerability(pagesOk: any[], seedUrl: string, origin: string) {
 }
 
 // ----------------------------
+// Business Information Inference
+// ----------------------------
+function inferBusinessInfo(pages: any[], seedUrl: string, origin: string) {
+  const ok = pages.filter((p) => p.status > 0 && p.status < 400);
+  const homeCandidates = new Set<string>([seedUrl, origin, `${origin}/`, `${origin}/home`]);
+  const home = ok.find((p) => homeCandidates.has(p.url));
+
+  // Extract business name from homepage title or domain (smarter extraction)
+  let businessName = "";
+  if (home?.title) {
+    // Remove common suffixes and clean up more intelligently
+    businessName = home.title
+      .replace(/\s*[-|–—]\s*(Home|Welcome|Official|Website|Site).*$/i, "")
+      .replace(/\s*[-|–—]\s*.*$/, "")
+      .replace(/\s*\|\s*.*$/, "")
+      .replace(/\s*:\s*.*$/, "")
+      .trim()
+      .slice(0, 60);
+    
+    // If title is too generic, try to extract from domain
+    if (businessName.length < 3 || businessName.toLowerCase().includes("home") || businessName.toLowerCase().includes("welcome")) {
+      businessName = "";
+    }
+  }
+  if (!businessName) {
+    try {
+      const hostname = new URL(seedUrl).hostname.replace(/^www\./, "");
+      const domainParts = hostname.split(".");
+      // Use domain name, capitalize properly
+      businessName = domainParts[0]
+        .split(/[-_]/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    } catch {
+      businessName = "Business";
+    }
+  }
+
+  // Infer industry/segment from content patterns with confidence scoring
+  const allText = ok.map((p) => `${p.title ?? ""} ${p.text ?? ""}`).join(" ").toLowerCase();
+  const homeText = home ? `${home.title ?? ""} ${home.text ?? ""}`.toLowerCase() : "";
+  
+  const industryPatterns: Record<string, { patterns: string[]; weight: number }> = {
+    "SaaS/Technology": { 
+      patterns: ["saas", "software", "platform", "api", "cloud", "dashboard", "app", "application", "software as a service"],
+      weight: 1.0
+    },
+    "E-commerce": { 
+      patterns: ["shop", "store", "cart", "product", "buy", "purchase", "checkout", "shopping", "ecommerce"],
+      weight: 1.2
+    },
+    "Healthcare": { 
+      patterns: ["health", "medical", "patient", "doctor", "clinic", "hospital", "healthcare", "physician"],
+      weight: 1.1
+    },
+    "Finance": { 
+      patterns: ["finance", "banking", "investment", "loan", "credit", "payment", "financial", "fintech"],
+      weight: 1.0
+    },
+    "Education": { 
+      patterns: ["education", "course", "learn", "training", "student", "university", "school", "learning"],
+      weight: 1.0
+    },
+    "Marketing/Agency": { 
+      patterns: ["marketing", "agency", "advertising", "campaign", "seo", "ppc", "digital marketing", "ad agency"],
+      weight: 1.1
+    },
+    "Real Estate": { 
+      patterns: ["property", "real estate", "home", "listing", "realtor", "realty", "properties"],
+      weight: 1.2
+    },
+    "Legal": { 
+      patterns: ["law", "legal", "attorney", "lawyer", "litigation", "law firm", "legal services"],
+      weight: 1.1
+    },
+    "Consulting": { 
+      patterns: ["consulting", "consultant", "advisory", "strategy", "consulting services"],
+      weight: 1.0
+    }
+  };
+
+  let bestIndustry = "General";
+  let bestScore = 0;
+  
+  for (const [ind, data] of Object.entries(industryPatterns)) {
+    const matches = data.patterns.filter((p) => allText.includes(p)).length;
+    const homeMatches = data.patterns.filter((p) => homeText.includes(p)).length;
+    // Homepage matches count more
+    const score = (matches * data.weight) + (homeMatches * data.weight * 2);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndustry = ind;
+    }
+  }
+  
+  const industry = bestScore > 0 ? bestIndustry : "General";
+
+  // Infer business model with better logic
+  let businessModel = "Service";
+  const modelSignals: Record<string, number> = {
+    "SaaS/Subscription": 0,
+    "E-commerce": 0,
+    "B2B Service": 0,
+    "B2C Service": 0
+  };
+
+  // SaaS signals
+  if (hasAny(allText, ["subscription", "monthly", "annual", "plan", "pricing", "tier", "trial", "free trial"])) {
+    modelSignals["SaaS/Subscription"] += 2;
+  }
+  if (hasAny(allText, ["api", "integration", "developer", "sdk"])) {
+    modelSignals["SaaS/Subscription"] += 1;
+  }
+
+  // E-commerce signals
+  if (hasAny(allText, ["shop", "store", "cart", "product", "buy now", "add to cart", "checkout"])) {
+    modelSignals["E-commerce"] += 3;
+  }
+  if (hasAny(allText, ["shipping", "delivery", "inventory"])) {
+    modelSignals["E-commerce"] += 1;
+  }
+
+  // B2B signals
+  if (hasAny(allText, ["b2b", "enterprise", "for businesses", "for companies", "for teams", "for organizations"])) {
+    modelSignals["B2B Service"] += 2;
+  }
+  if (hasAny(allText, ["enterprise", "corporate", "business solution"])) {
+    modelSignals["B2B Service"] += 1;
+  }
+
+  // B2C signals
+  if (hasAny(allText, ["b2c", "for consumers", "for customers", "for individuals"])) {
+    modelSignals["B2C Service"] += 2;
+  }
+
+  const maxModel = Object.entries(modelSignals).reduce((a, b) => (a[1] > b[1] ? a : b));
+  businessModel = maxModel[1] > 0 ? maxModel[0] : "Service";
+
+  // Extract primary audiences with frequency scoring
+  const audiencePatterns: Record<string, string[]> = {
+    "teams": ["for teams", "team", "teams", "team collaboration"],
+    "businesses": ["for businesses", "for companies", "business", "company"],
+    "marketers": ["for marketers", "marketer", "marketing team", "marketing professional"],
+    "developers": ["for developers", "developer", "dev", "engineering", "engineer"],
+    "agencies": ["for agencies", "agency", "agencies"],
+    "enterprises": ["for enterprises", "enterprise", "large organizations"],
+    "startups": ["for startups", "startup", "startups", "early stage"],
+    "recruiters": ["for recruiters", "recruiter", "recruiting", "talent acquisition"],
+    "sales teams": ["for sales teams", "sales team", "sales professional", "sales rep"]
+  };
+  
+  const audienceScores: Record<string, number> = {};
+  for (const [audience, patterns] of Object.entries(audiencePatterns)) {
+    const matches = patterns.filter((p) => allText.includes(p)).length;
+    const homeMatches = patterns.filter((p) => homeText.includes(p)).length;
+    audienceScores[audience] = matches + (homeMatches * 2);
+  }
+
+  const topAudiences = Object.entries(audienceScores)
+    .filter(([_, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([audience]) => audience);
+  
+  const primaryAudiences = topAudiences.length > 0 
+    ? topAudiences.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(", ")
+    : "General audience";
+
+  // Infer primary conversions with better detection
+  const conversionPatterns: Record<string, { patterns: string[]; weight: number }> = {
+    "Contact/Lead Form": { 
+      patterns: ["contact", "get in touch", "request", "form", "inquiry", "reach out"],
+      weight: 1.0
+    },
+    "Sign Up/Registration": { 
+      patterns: ["sign up", "register", "create account", "get started", "join", "signup"],
+      weight: 1.2
+    },
+    "Purchase/Checkout": { 
+      patterns: ["buy", "purchase", "checkout", "add to cart", "order", "pay"],
+      weight: 1.5
+    },
+    "Schedule/Demo": { 
+      patterns: ["schedule", "book", "demo", "consultation", "appointment", "book a call"],
+      weight: 1.3
+    },
+    "Download": { 
+      patterns: ["download", "get", "free trial", "download now"],
+      weight: 1.1
+    }
+  };
+
+  let bestConversion = "Contact/Lead Form";
+  let bestConvScore = 0;
+  
+  for (const [conv, data] of Object.entries(conversionPatterns)) {
+    const matches = data.patterns.filter((p) => allText.includes(p)).length;
+    const score = matches * data.weight;
+    if (score > bestConvScore) {
+      bestConvScore = score;
+      bestConversion = conv;
+    }
+  }
+  
+  const primaryConversions = bestConvScore > 0 ? bestConversion : "Contact/Lead Form";
+
+  // High-level funnel notes with more detail
+  const hasPricing = hasAny(allText, ["pricing", "plans", "cost", "price", "pricing page"]);
+  const hasFeatures = hasAny(allText, ["features", "benefits", "what you get", "capabilities"]);
+  const hasTestimonials = hasAny(allText, ["testimonial", "review", "case study", "customer", "client"]);
+  const hasBlog = ok.some((p) => p.url.toLowerCase().includes("blog") || p.url.toLowerCase().includes("news"));
+  const hasAbout = ok.some((p) => p.url.toLowerCase().includes("about") || p.url.toLowerCase().includes("company"));
+  
+  const funnelNotes = [
+    hasPricing ? "Pricing information present" : null,
+    hasFeatures ? "Feature/benefit content present" : null,
+    hasTestimonials ? "Social proof elements present" : null,
+    hasBlog ? "Content/blog presence" : null,
+    hasAbout ? "About/company page present" : null
+  ]
+    .filter(Boolean)
+    .join(" • ") || "Standard conversion flow";
+
+  return {
+    businessName,
+    website: seedUrl,
+    industry,
+    businessModel,
+    primaryAudiences,
+    primaryConversions,
+    funnelNotes
+  };
+}
+
+// ----------------------------
+// Executive Summary Generation
+// ----------------------------
+function generateExecutiveSummary(
+  grades: any,
+  scores: any,
+  businessInfo: any,
+  explanations: any
+): string {
+  const lines: string[] = [];
+  const businessName = businessInfo.businessName || "The site";
+
+  // What the site does well (smarter detection)
+  const strengths: string[] = [];
+  const strengthDetails: string[] = [];
+  
+  if (grades.structure === "A" || grades.structure === "A+") {
+    strengths.push("excellent structure");
+    strengthDetails.push("pages are well-organized with clear titles and headings");
+  } else if (grades.structure === "B" || grades.structure === "B+") {
+    strengths.push("solid structure");
+    strengthDetails.push("most pages have clear organization");
+  }
+  
+  if (grades.technicalReadiness === "A" || grades.technicalReadiness === "A+") {
+    strengths.push("strong technical foundation");
+    strengthDetails.push("technical signals are well-implemented");
+  } else if (grades.technicalReadiness === "B" || grades.technicalReadiness === "B+") {
+    strengths.push("good technical foundation");
+  }
+  
+  if (scores.overall >= 80) {
+    strengths.push("strong AI discoverability");
+    strengthDetails.push("AI systems can generally understand the brand");
+  } else if (scores.overall >= 70) {
+    strengths.push("reasonable AI discoverability");
+  }
+  
+  if (grades.contentDepth === "A" || grades.contentDepth === "B") {
+    strengths.push("substantial content depth");
+    strengthDetails.push("pages provide detailed information");
+  }
+
+  // Build strength sentence intelligently
+  let strengthText = "";
+  if (strengths.length > 0) {
+    if (strengths.length === 1) {
+      strengthText = `${businessName} has ${strengths[0]}.`;
+    } else if (strengths.length === 2) {
+      strengthText = `${businessName} has ${strengths[0]} and ${strengths[1]}.`;
+    } else {
+      strengthText = `${businessName} has ${strengths.slice(0, -1).join(", ")}, and ${strengths[strengths.length - 1]}.`;
+    }
+    if (strengthDetails.length > 0) {
+      strengthText += ` ${strengthDetails[0]}.`;
+    }
+  } else {
+    strengthText = `${businessName} has a functional website with basic online presence.`;
+  }
+
+  // Structural constraints (more nuanced)
+  const constraints: string[] = [];
+  const constraintSeverity: "high" | "medium" | "low" = 
+    (grades.aiReadiness === "D" || grades.aiReadiness === "F" || 
+     grades.contentDepth === "D" || grades.contentDepth === "F") ? "high" :
+    (grades.aiReadiness === "C" || grades.contentDepth === "C") ? "medium" : "low";
+
+  if (grades.aiReadiness === "D" || grades.aiReadiness === "F") {
+    constraints.push("AI systems struggle significantly to understand and summarize the brand");
+  } else if (grades.aiReadiness === "C") {
+    constraints.push("AI systems have inconsistent understanding of what the brand does and who it serves");
+  } else if (scores.aiReadiness < 70) {
+    constraints.push("AI systems may miss key brand signals when recommending or summarizing");
+  }
+  
+  if (grades.contentDepth === "D" || grades.contentDepth === "F") {
+    constraints.push("content lacks the depth needed for confident AI recommendations");
+  } else if (grades.contentDepth === "C" && scores.contentDepth < 60) {
+    constraints.push("many pages lack sufficient detail for AI systems to make strong recommendations");
+  }
+  
+  if (grades.structure === "D" || grades.structure === "F") {
+    constraints.push("site structure limits clear communication of services and intent");
+  } else if (grades.structure === "C" && scores.structure < 65) {
+    constraints.push("inconsistent structure across pages reduces AI comprehension");
+  }
+
+  // Build constraint sentence
+  let constraintText = "";
+  if (constraints.length > 0) {
+    if (constraints.length === 1) {
+      constraintText = `However, ${constraints[0]}.`;
+    } else if (constraints.length === 2) {
+      constraintText = `However, ${constraints[0]}, and ${constraints[1]}.`;
+    } else {
+      constraintText = `However, ${constraints.slice(0, -1).join(", ")}, and ${constraints[constraints.length - 1]}.`;
+    }
+  } else {
+    constraintText = "However, there are opportunities to improve AI visibility and ensure consistent brand communication.";
+  }
+
+  // What GPTO unlocks (context-aware)
+  const unlocks: string[] = [];
+  const unlockBenefits: string[] = [];
+  
+  if (grades.aiReadiness === "D" || grades.aiReadiness === "F") {
+    unlocks.push("transforms the brand into a readable and recommendable entity for AI tools");
+    unlockBenefits.push("ensures AI systems can accurately summarize and recommend the brand");
+  } else if (grades.aiReadiness === "C" || scores.aiReadiness < 70) {
+    unlocks.push("makes the brand consistently readable and recommendable by AI tools");
+  } else {
+    unlocks.push("enhances AI discoverability");
+  }
+  
+  if (grades.contentDepth === "D" || grades.contentDepth === "F" || grades.contentDepth === "C") {
+    unlocks.push("creates clear service and intent depth");
+    unlockBenefits.push("provides the detail needed for confident AI recommendations");
+  }
+  
+  if (grades.structure === "D" || grades.structure === "F" || grades.structure === "C") {
+    unlocks.push("clarifies services, audiences, and intent");
+    unlockBenefits.push("ensures consistent communication across all discovery channels");
+  }
+
+  // Build unlock sentence
+  let unlockText = "";
+  if (unlocks.length > 0) {
+    if (unlocks.length === 1) {
+      unlockText = `GPTO ${unlocks[0]} so the brand is correctly understood, found, and chosen across modern discovery channels.`;
+    } else {
+      unlockText = `GPTO ${unlocks.join(", ")} so the brand is correctly understood, found, and chosen across modern discovery channels.`;
+    }
+    if (unlockBenefits.length > 0 && unlockBenefits.length <= 2) {
+      unlockText += ` ${unlockBenefits.join(" ")}`;
+    }
+  } else {
+    unlockText = "GPTO enhances AI visibility and ensures the brand is correctly understood, found, and chosen across modern discovery channels.";
+  }
+
+  lines.push(strengthText);
+  lines.push(constraintText);
+  lines.push(unlockText);
+
+  // Add industry-specific context if available
+  if (businessInfo.industry && businessInfo.industry !== "General") {
+    if (constraintSeverity === "high") {
+      lines.push(`In the ${businessInfo.industry} space, clear AI visibility is increasingly critical for discovery and trust.`);
+    }
+  }
+
+  // Add tier-specific context intelligently
+  if (explanations?.tierWhy?.[0]) {
+    const tierContext = explanations.tierWhy[0].toLowerCase();
+    if (tierContext.includes("baseline") || tierContext.includes("low") || tierContext.includes("prioritize")) {
+      lines.push(`The current readiness level suggests prioritizing foundational improvements to establish clarity first.`);
+    } else if (tierContext.includes("mixed") || tierContext.includes("inconsistent")) {
+      lines.push(`Focusing on consistency and reinforcement will strengthen AI interpretation across all channels.`);
+    }
+  }
+
+  // Ensure we don't exceed 6 lines, but make them meaningful
+  const summary = lines.filter(Boolean).slice(0, 6).join(" ");
+  
+  // If summary is too short, add a closing line
+  if (summary.length < 200 && lines.length < 6) {
+    return summary + " This positions the brand for better performance in AI-driven search and answer engines.";
+  }
+  
+  return summary;
+}
+
+// ----------------------------
 // Scoring
 // ----------------------------
 function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boolean) {
@@ -406,6 +812,12 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
 
   const recommendations = buildRecommendations(signals as any);
 
+  // Infer business information
+  const businessInfo = inferBusinessInfo(pages, seedUrl, origin);
+
+  // Generate executive summary
+  const executiveSummary = generateExecutiveSummary(grades, scores, businessInfo, explanations);
+
   return {
     scores,
     grades,
@@ -413,7 +825,9 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
     tier,
     explanations,
     recommendations,
-    signals
+    signals,
+    businessInfo,
+    executiveSummary
   };
 }
 

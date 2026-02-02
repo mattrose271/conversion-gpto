@@ -1034,7 +1034,7 @@ function FinalClose({ report }: { report: any }) {
           marginBottom: 16,
           border: "1px solid rgba(0,0,0,.06)"
         }}>
-          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14, color: "var(--brand-red)" }}>
+          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14 }}>
             Why This Matters Right Now
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6 }}>
@@ -1051,7 +1051,7 @@ function FinalClose({ report }: { report: any }) {
           marginBottom: 16,
           border: "1px solid rgba(0,0,0,.06)"
         }}>
-          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14, color: "var(--brand-red)" }}>
+          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14 }}>
             What Success Looks Like
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6 }}>
@@ -1278,10 +1278,10 @@ function renderAuditDimension(
 
   return (
     <section className="card" style={{ height: "100%" }}>
-      <h3 style={{ marginTop: 0, color: "var(--brand-red)" }}>{title}</h3>
+      <h3 style={{ marginTop: 0 }}>{title}</h3>
 
       <div style={{ marginBottom: 20 }}>
-        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>Your Current Score</strong>
+        <strong style={{ display: "block", marginBottom: 8 }}>Your Current Score</strong>
         <div style={{ 
           display: "inline-flex", 
           alignItems: "baseline", 
@@ -1301,7 +1301,7 @@ function renderAuditDimension(
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>What We Found</strong>
+        <strong style={{ display: "block", marginBottom: 8 }}>What We Found</strong>
         <div style={{ marginBottom: 12 }}>
           <strong style={{ fontSize: 14 }}>What's working well:</strong>
           <ul style={{ marginTop: 4, paddingLeft: 20 }}>
@@ -1321,14 +1321,14 @@ function renderAuditDimension(
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>How GPTO Will Help</strong>
+        <strong style={{ display: "block", marginBottom: 8 }}>How GPTO Will Help</strong>
         <p style={{ fontSize: 14, margin: 0, lineHeight: 1.6 }}>
           {gptoChanges.join(" ")}
         </p>
       </div>
 
       <div style={{ marginBottom: 0 }}>
-        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>Expected Improvement</strong>
+        <strong style={{ display: "block", marginBottom: 8 }}>Expected Improvement</strong>
         <p style={{ fontSize: 14, margin: 0, lineHeight: 1.6 }}>
           {expectedOutcome.replace(/machine readability/g, "how easily systems can understand your site").replace(/structural improvements/g, "improvements to how your site is organized")}
         </p>

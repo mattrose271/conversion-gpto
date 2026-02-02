@@ -390,24 +390,27 @@ export default function AuditPage() {
 
                 {/* What scores mean */}
                 <div className="card">
-                  <h3 style={{ marginTop: 0, marginBottom: 12 }}>Understanding Your Scores</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <li>
-                      <strong>AI Clarity:</strong> How easily an AI system can answer what you do, who it’s for, and how it works from your site.
-                    </li>
-                    <div style={{ padding: "10px 0", borderBottom: "1px solid rgba(0,0,0,.06)" }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 10 }}>Understanding Your Scores</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,.06)" }}>
+                      <strong style={{ display: "block", marginBottom: 4 }}>AI Clarity</strong>
+                      <span style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>
+                        How easily AI tools can understand what you do, who you serve, and how you help.
+                      </span>
+                    </div>
+                    <div style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,.06)" }}>
                       <strong style={{ display: "block", marginBottom: 4 }}>Structure</strong>
                       <span style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>
                         How well your pages are organized with clear titles, headings, and descriptions.
                       </span>
                     </div>
-                    <div style={{ padding: "10px 0", borderBottom: "1px solid rgba(0,0,0,.06)" }}>
+                    <div style={{ padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,.06)" }}>
                       <strong style={{ display: "block", marginBottom: 4 }}>Content Depth</strong>
                       <span style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>
                         Whether your pages have enough detail for AI tools to confidently recommend you.
                       </span>
                     </div>
-                    <div style={{ padding: "10px 0" }}>
+                    <div style={{ padding: "8px 0" }}>
                       <strong style={{ display: "block", marginBottom: 4 }}>Technical</strong>
                       <span style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>
                         How easily search engines can find and index your pages.
@@ -423,7 +426,7 @@ export default function AuditPage() {
                   <div style={{ 
                     borderTop: "1px solid rgba(0,0,0,.1)", 
                     paddingTop: 24, 
-                    marginBottom: 20
+                    marginBottom: 12
                   }}>
                     <h2 style={{ marginTop: 0, marginBottom: 6 }}>Strategic AI Readiness Assessment</h2>
                     <p className="muted" style={{ marginTop: 0, fontSize: 15, lineHeight: 1.6 }}>
@@ -434,7 +437,7 @@ export default function AuditPage() {
 
                   {/* 1. Executive Summary */}
                   <div className="card" style={{ marginBottom: 20 }}>
-                    <h3 style={{ marginTop: 0, marginBottom: 10 }}>Key Findings at a Glance</h3>
+                    <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Key Findings at a Glance</h3>
                     <p style={{ lineHeight: 1.6, margin: 0, whiteSpace: "pre-line" }}>
                       {report.executiveSummary}
                     </p>
@@ -443,7 +446,7 @@ export default function AuditPage() {
                   {/* 2. Customer Snapshot */}
                   {report.businessInfo && (
                     <div className="card" style={{ marginBottom: 20 }}>
-                      <h3 style={{ marginTop: 0, marginBottom: 10 }}>About Your Business</h3>
+                      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>About Your Business</h3>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <tbody>
                           <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
@@ -488,7 +491,7 @@ export default function AuditPage() {
 
                   {/* 4. Core GPTO Audit (4 Dimensions) */}
                   <div style={{ marginTop: 20 }}>
-                    <h3 style={{ marginBottom: 12 }}>Four Key Areas We Analyzed</h3>
+                    <h3 style={{ marginBottom: 12, color: "var(--brand-red)" }}>Four Key Areas We Analyzed</h3>
                     <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
                       We looked at four important areas that determine how well AI tools and search engines can find, understand, and recommend your business.
                     </p>
@@ -560,7 +563,7 @@ export default function AuditPage() {
 
                   {/* 7. Strategic Positioning */}
                   <div className="card" style={{ marginTop: 20 }}>
-                    <h3 style={{ marginTop: 0, marginBottom: 10 }}>Which Package Fits Your Needs</h3>
+                    <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Which Package Fits Your Needs</h3>
                     <p style={{ margin: 0, lineHeight: 1.7 }}>
                       <strong>Bronze</strong> establishes clarity and control.{" "}
                       <strong>Silver</strong> improves efficiency when ready.{" "}
@@ -759,7 +762,7 @@ function PerformanceSummaryTable({ report }: { report: any }) {
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10 }}>Current vs. Potential Performance</h3>
+      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Current vs. Potential Performance</h3>
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
         See how your site performs today and how much better it could be with GPTO. These scores show the direction of improvement, not exact promises.
       </p>
@@ -809,7 +812,7 @@ function PackageCapabilityTable({ report }: { report: any }) {
 
   return (
     <div className="card" style={{ marginTop: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10 }}>What Each Package Includes</h3>
+      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>What Each Package Includes</h3>
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
         Compare capabilities across our service tiers to find the right fit for your needs and goals.
       </p>
@@ -870,7 +873,7 @@ function GrowthProgressionTable() {
 
   return (
     <div className="card" style={{ marginTop: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10 }}>Expected Outcomes by Package</h3>
+      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Expected Outcomes by Package</h3>
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
         Each package focuses on different improvements. These scores show what you can typically expect based on similar implementations.
       </p>
@@ -908,7 +911,7 @@ function RoadmapTimeline() {
 
   return (
     <div className="card" style={{ marginTop: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10 }}>90-Day Implementation Timeline</h3>
+      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>90-Day Implementation Timeline</h3>
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
         A simple timeline showing when you can expect to see improvements. We focus on the big picture, not detailed technical tasks.
       </p>
@@ -952,7 +955,7 @@ function EvidenceAppendix({ report }: { report: any }) {
           textAlign: "left"
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 0 }}>Supporting Evidence</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 0, color: "var(--brand-red)" }}>Supporting Evidence</h3>
         <span style={{ fontSize: 20 }}>{isOpen ? "−" : "+"}</span>
       </button>
       {isOpen && (
@@ -1020,7 +1023,7 @@ function FinalClose({ report }: { report: any }) {
         marginBottom: 20,
         borderBottom: "1px solid rgba(0,0,0,.1)"
       }}>
-        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Ready to Improve Your AI Visibility?</h3>
+        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--brand-red)" }}>Ready to Improve Your AI Visibility?</h3>
       </div>
       
       <div style={{ lineHeight: 1.7, fontSize: 15 }}>
@@ -1031,7 +1034,7 @@ function FinalClose({ report }: { report: any }) {
           marginBottom: 16,
           border: "1px solid rgba(0,0,0,.06)"
         }}>
-          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14 }}>
+          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14, color: "var(--brand-red)" }}>
             Why This Matters Right Now
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6 }}>
@@ -1048,7 +1051,7 @@ function FinalClose({ report }: { report: any }) {
           marginBottom: 16,
           border: "1px solid rgba(0,0,0,.06)"
         }}>
-          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14 }}>
+          <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14, color: "var(--brand-red)" }}>
             What Success Looks Like
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6 }}>
@@ -1275,10 +1278,10 @@ function renderAuditDimension(
 
   return (
     <section className="card" style={{ height: "100%" }}>
-      <h3 style={{ marginTop: 0 }}>{title}</h3>
+      <h3 style={{ marginTop: 0, color: "var(--brand-red)" }}>{title}</h3>
 
       <div style={{ marginBottom: 20 }}>
-        <strong style={{ display: "block", marginBottom: 8 }}>Your Current Score</strong>
+        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>Your Current Score</strong>
         <div style={{ 
           display: "inline-flex", 
           alignItems: "baseline", 
@@ -1298,7 +1301,7 @@ function renderAuditDimension(
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <strong style={{ display: "block", marginBottom: 8 }}>What We Found</strong>
+        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>What We Found</strong>
         <div style={{ marginBottom: 12 }}>
           <strong style={{ fontSize: 14 }}>What's working well:</strong>
           <ul style={{ marginTop: 4, paddingLeft: 20 }}>
@@ -1318,14 +1321,14 @@ function renderAuditDimension(
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <strong style={{ display: "block", marginBottom: 8 }}>How GPTO Will Help</strong>
+        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>How GPTO Will Help</strong>
         <p style={{ fontSize: 14, margin: 0, lineHeight: 1.6 }}>
           {gptoChanges.join(" ")}
         </p>
       </div>
 
       <div style={{ marginBottom: 0 }}>
-        <strong style={{ display: "block", marginBottom: 8 }}>Expected Improvement</strong>
+        <strong style={{ display: "block", marginBottom: 8, color: "var(--brand-red)" }}>Expected Improvement</strong>
         <p style={{ fontSize: 14, margin: 0, lineHeight: 1.6 }}>
           {expectedOutcome.replace(/machine readability/g, "how easily systems can understand your site").replace(/structural improvements/g, "improvements to how your site is organized")}
         </p>

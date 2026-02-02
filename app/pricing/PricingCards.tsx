@@ -158,7 +158,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           padding: 4px 2px 12px;
           scrollbar-width: none;
 
-          /* Prevent page-side "rubber band" / drift */
+          /* Prevent page-side rubber band drift */
           overscroll-behavior-x: contain;
           scroll-snap-stop: always;
 

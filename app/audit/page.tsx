@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import TierDeliverables from "../components/TierDeliverables";
 
 type Report = any;
 
@@ -74,9 +75,12 @@ export default function AuditPage() {
       setProgress(100);
       setReport(data);
 
-      // Persist recommended tier for later flows if needed
+      // Persist recommended tier and audit ID for later flows if needed
       try {
         window.localStorage.setItem("gpto_recommended_tier", String(data.tier || ""));
+        if (data.auditId) {
+          window.localStorage.setItem("gpto_latest_audit_id", String(data.auditId));
+        }
       } catch {}
 
       setTimeout(() => {
@@ -333,7 +337,7 @@ export default function AuditPage() {
                 {report.scope?.usedSitemap ? "sitemap.xml" : "link crawl"}
               </div>
 
-              <div className="grid cols-2" style={{ alignItems: "start" }}>
+              <div className="grid cols-2" style={{ alignItems: "start", gap: 16 }}>
                 {/* Scorecard */}
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
@@ -377,15 +381,7 @@ export default function AuditPage() {
                           report.url || ""
                         )}`}
                       >
-                        View Tier Deliverables
-                      </a>
-                      <a
-                        className="btn alt"
-                        href={`/contact?tier=${encodeURIComponent(report.tier || "")}&url=${encodeURIComponent(
-                          report.url || ""
-                        )}`}
-                      >
-                        Contact About GPTO Packages
+                        View All Plans
                       </a>
                     </div>
                   </div>
@@ -413,6 +409,13 @@ export default function AuditPage() {
                   </small>
                 </div>
               </div>
+
+              {/* Tier Deliverables - Automatically displayed */}
+              {report.tier && (
+                <div style={{ marginTop: 24 }}>
+                  <TierDeliverables tier={report.tier} websiteUrl={report.url} />
+                </div>
+              )}
 
               <div id="details" />
 

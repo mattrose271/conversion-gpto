@@ -49,32 +49,28 @@ function tailoredPlanReason(plan: Plan, body: Body): string {
 
 async function optionallyForwardToInbox(report: any) {
   // Optional internal forward only. No email is sent to the prospect automatically.
-  // If RESEND_API_KEY and PRIMARY_EMAIL exist, send a single internal email.
+  // If SMTP is configured and PRIMARY_EMAIL exists, send a single internal email.
   try {
     const to = process.env.PRIMARY_EMAIL;
-    const key = process.env.RESEND_API_KEY;
-    if (!to || !key) {
-      console.log('[report] INTERNAL ONLY — missing RESEND_API_KEY or PRIMARY_EMAIL. Report logged.');
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPassword = process.env.SMTP_PASSWORD;
+    
+    if (!to || !smtpHost || !smtpUser || !smtpPassword) {
+      console.log('[report] INTERNAL ONLY — missing SMTP configuration or PRIMARY_EMAIL. Report logged.');
       console.log(JSON.stringify(report, null, 2));
       return;
     }
-    // Minimal inline send using Resend API (no templates, internal only)
-    const resp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: `GPTO Reports <reports@conversionia.com>`,
-        to: [to],
-        subject: `New GPTO Report: ${report?.customer?.domain || report?.customer?.email}`,
-        html: `<pre style="white-space:pre-wrap;">${JSON.stringify(report, null, 2)}</pre>`
-      })
+    
+    // Use shared email utility - import from root lib directory
+    const { sendEmail } = await import('../../../../../lib/email');
+    await sendEmail({
+      to: to,
+      subject: `New GPTO Report: ${report?.customer?.domain || report?.customer?.email}`,
+      html: `<pre style="white-space:pre-wrap;">${JSON.stringify(report, null, 2)}</pre>`,
+      from: process.env.SMTP_FROM_EMAIL || smtpUser,
+      fromName: 'GPTO Reports',
     });
-    if (!resp.ok) {
-      console.warn('[report] Resend API failed', await resp.text());
-    }
   } catch (e) {
     console.warn('[report] Internal forward failed', e);
   }

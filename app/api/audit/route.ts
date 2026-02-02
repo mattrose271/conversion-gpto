@@ -3,12 +3,14 @@ import { z } from "zod";
 import * as cheerio from "cheerio";
 import { XMLParser } from "fast-xml-parser";
 import { buildRecommendations } from "./knowledgeBase";
+import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  url: z.string().min(1)
+  url: z.string().min(1),
+  email: z.string().email().optional()
 });
 
 // ----------------------------
@@ -455,7 +457,35 @@ export async function POST(req: Request) {
 
     cache.set(cacheKey, { ts: Date.now(), payload });
 
-    return NextResponse.json(payload);
+    // Save audit to database
+    let auditId: string | null = null;
+    try {
+      const audit = await db.audit.create({
+        data: {
+          url,
+          domain: seed.hostname,
+          email: parsed.email || null,
+          tier: scored.tier || null,
+          scores: scored.scores,
+          grades: scored.grades,
+          recommendations: scored.recommendations || null,
+          signals: scored.signals || null,
+          scope: payload.scope
+        }
+      });
+      auditId = audit.id;
+    } catch (dbError: any) {
+      // Log error but don't fail the request
+      console.error("Failed to save audit to database:", dbError);
+    }
+
+    // Include audit ID in response for client-side linking
+    const responsePayload = {
+      ...payload,
+      auditId
+    };
+
+    return NextResponse.json(responsePayload);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Bad request" }, { status: 400 });
   }

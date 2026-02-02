@@ -91,7 +91,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
             color:white !important;
           }
 
-          /* Mobile menu uses <details> */
+          /* Mobile menu */
           .navMobile{
             display:none;
             position:relative;

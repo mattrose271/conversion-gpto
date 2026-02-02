@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Audit {
+  id              String   @id @default(uuid())
+  url             String
+  domain          String
+  email           String?
+  tier            String?  @db.VarChar(20)
+  scores          Json
+  grades          Json
+  recommendations Json?
+  signals         Json?
+  scope           Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  emailSubmissions EmailSubmission[]
+
+  @@index([domain])
+  @@index([createdAt(sort: Desc)])
+  @@index([tier])
+  @@map("audits")
+}
+
+model EmailSubmission {
+  id        String   @id @default(uuid())
+  email     String
+  auditId   String?  @map("audit_id")
+  source    String   @default("modal")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  audit Audit? @relation(fields: [auditId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([auditId])
+  @@map("email_submissions")
+}
+
+model TierDeliverable {
+  id           String   @id @default(uuid())
+  tier         String   @unique @db.VarChar(20)
+  title        String
+  price        String
+  subtitle     String
+  deliverables Json     // Array of strings
+  calendlyUrl  String?  @map("calendly_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("tier_deliverables")
+}

@@ -24,6 +24,7 @@ export default function ContactClient({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL || "";
 
   function handleAuditClick(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
@@ -66,7 +67,40 @@ export default function ContactClient({
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to send.");
 
-      setDone("Thanks — your message has been sent. Our team will be in touch.");
+      // Build Calendly URL with query parameters
+      const buildCalendlyUrl = () => {
+        if (!calendlyUrl || calendlyUrl.trim() === "") return null;
+        try {
+          const url = new URL(calendlyUrl);
+          if (tier) url.searchParams.set("tier", String(tier));
+          if (website) url.searchParams.set("website", website);
+          if (email) url.searchParams.set("email", email);
+          if (name) url.searchParams.set("name", name);
+          // Add redirect URL to return to website after scheduling
+          if (typeof window !== "undefined") {
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+            const returnUrl = website ? `${siteUrl}/audit?url=${encodeURIComponent(website)}` : siteUrl;
+            url.searchParams.set("redirect", returnUrl);
+          }
+          return url.toString();
+        } catch (e) {
+          console.error("Invalid Calendly URL:", e);
+          return null;
+        }
+      };
+
+      // Redirect to Calendly if URL is configured
+      const calendlyLink = buildCalendlyUrl();
+      if (calendlyLink) {
+        // Small delay to show success message briefly, then redirect
+        setDone("Thanks — your message has been sent. Redirecting to schedule a call...");
+        setTimeout(() => {
+          window.location.href = calendlyLink;
+        }, 1000);
+      } else {
+        setDone("Thanks — your message has been sent. Our team will be in touch.");
+      }
+      
       setName("");
       setBusinessName("");
       setEmail("");

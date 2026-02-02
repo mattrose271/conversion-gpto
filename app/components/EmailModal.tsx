@@ -40,10 +40,18 @@ export default function EmailModal({ isOpen, onClose, onSuccess }: EmailModalPro
     setLoading(true);
 
     try {
+      // Try to get audit ID from localStorage if available
+      const auditId = typeof window !== "undefined" 
+        ? window.localStorage.getItem("gpto_latest_audit_id") 
+        : null;
+
       const res = await fetch("/api/audit/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ 
+          email,
+          auditId: auditId || undefined
+        })
       });
 
       // Try to parse response, but don't block on errors

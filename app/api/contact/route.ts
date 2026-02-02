@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,11 +20,12 @@ export async function POST(req: Request) {
   try {
     const input = Body.parse(await req.json());
 
-    const to = "jlethgo@conversionia.com";
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error("Missing RESEND_API_KEY");
-
-    const resend = new Resend(apiKey);
+    // Get recipients from environment variable or use default
+    const recipientsEnv = process.env.AUDIT_EMAIL_RECIPIENTS || "jlethgo@conversionia.com";
+    const recipients = recipientsEnv
+      .split(",")
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
 
     const subject = `GPTO Audit Enquiry: ${input.businessName} (${input.website})`;
 
@@ -43,17 +44,32 @@ export async function POST(req: Request) {
       `${input.message || "—"}`
     ].join("\n");
 
-    await resend.emails.send({
-      // IMPORTANT: This must be a verified sender in Resend.
-      from: "GPTO Audit <no-reply@conversionia.com>",
-      to: [to],
-      reply_to: input.email,
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #C20F2C;">New GPTO Contact Request</h2>
+        <p><strong>Name:</strong> ${input.name}</p>
+        <p><strong>Business:</strong> ${input.businessName}</p>
+        <p><strong>Website:</strong> ${input.website}</p>
+        <p><strong>Email:</strong> ${input.email}</p>
+        <p><strong>Contact Number:</strong> ${input.contactNumber || "—"}</p>
+        <p><strong>Industry:</strong> ${input.industry || "—"}</p>
+        <p><strong>Recommended Tier:</strong> ${input.tier || "—"}</p>
+        <p><strong>Message:</strong></p>
+        <p>${input.message || "—"}</p>
+      </div>
+    `;
+
+    await sendEmail({
+      to: recipients,
       subject,
-      text
+      html,
+      text,
+      replyTo: input.email,
     });
 
     return NextResponse.json({ ok: true, message: "Sent." });
   } catch (e: any) {
+    console.error("Contact form error:", e);
     return NextResponse.json(
       { error: e?.message || "Bad request" },
       { status: 400 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PricingCards from "./PricingCards";
 import EmailModal from "../components/EmailModal";
@@ -13,7 +13,7 @@ function normalizeTier(t: string | undefined) {
   return undefined;
 }
 
-export default function PricingPage() {
+function PricingPageContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -77,5 +77,22 @@ export default function PricingPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div>
+        <section className="hero">
+          <div className="container">
+            <h1>Plans & <span style={{ color: "var(--brand-red)" }}>Pricing</span></h1>
+            <p className="muted">Loading...</p>
+          </div>
+        </section>
+      </div>
+    }>
+      <PricingPageContent />
+    </Suspense>
   );
 }

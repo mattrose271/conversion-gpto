@@ -412,7 +412,8 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
     overallScore,
     tier,
     explanations,
-    recommendations
+    recommendations,
+    signals
   };
 }
 

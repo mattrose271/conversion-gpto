@@ -22,7 +22,17 @@ function getPrismaClient() {
   });
 }
 
-export const db =
-  globalForPrisma.prisma ?? getPrismaClient();
+// Lazy initialization - only create client when accessed, not during module import
+function getDb() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = getPrismaClient();
+  }
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+// Export a getter that lazily initializes the client
+export const db = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return getDb()[prop as keyof PrismaClient];
+  }
+});

@@ -494,6 +494,7 @@ function inferBusinessInfo(pages: any[], seedUrl: string, origin: string) {
 
 // ----------------------------
 // Executive Summary Generation
+// Trigger deployment - grammar fixes and industry removal
 // ----------------------------
 function generateExecutiveSummary(
   grades: any,

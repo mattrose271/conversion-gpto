@@ -213,6 +213,117 @@ export default function AuditPage() {
         @media (max-width: 899px) {
           .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
         }
+
+        /* Comprehensive mobile responsive styles */
+        @media (max-width: 640px) {
+          /* Reduce card padding on mobile */
+          .card {
+            padding: 12px !important;
+            margin-bottom: 16px !important;
+          }
+
+          /* Smaller headings on mobile */
+          h2 { font-size: 24px !important; line-height: 1.2 !important; }
+          h3 { font-size: 18px !important; line-height: 1.3 !important; margin-bottom: 8px !important; }
+
+          /* Reduce spacing in sections */
+          .section { padding: 24px 0 !important; }
+          
+          /* Tables - make them scrollable with better mobile UX */
+          table {
+            font-size: 14px !important;
+          }
+          th, td {
+            padding: 8px 6px !important;
+            font-size: 13px !important;
+          }
+          th {
+            font-size: 12px !important;
+            white-space: nowrap;
+          }
+
+          /* Stack grid layouts */
+          .grid.cols-2 {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          /* Mobile-friendly buttons */
+          .btn {
+            width: 100% !important;
+            min-width: auto !important;
+            padding: 12px 16px !important;
+            font-size: 15px !important;
+          }
+
+          /* Reduce margins and padding */
+          p { margin-bottom: 10px !important; font-size: 15px !important; }
+          .muted { font-size: 13px !important; }
+
+          /* Roadmap timeline - stack on mobile */
+          .roadmap-item {
+            flex-direction: column !important;
+            gap: 8px !important;
+            align-items: flex-start !important;
+          }
+
+          /* Final close section - full width buttons */
+          .final-close-buttons {
+            flex-direction: column !important;
+          }
+          .final-close-buttons .btn {
+            width: 100% !important;
+          }
+
+          /* Scorecard - reduce size on mobile */
+          .scorecard-grade {
+            font-size: 24px !important;
+          }
+
+          /* Large text sizes - make responsive */
+          .large-text {
+            font-size: 24px !important;
+          }
+          .xlarge-text {
+            font-size: 28px !important;
+          }
+
+          /* About Your Business table - better mobile layout */
+          .business-info-table td:first-child {
+            width: auto !important;
+            min-width: 120px;
+          }
+        }
+
+        /* Tablet adjustments (641px - 899px) */
+        @media (min-width: 641px) and (max-width: 899px) {
+          .card {
+            padding: 14px !important;
+          }
+          table {
+            font-size: 14px;
+          }
+          th, td {
+            padding: 10px 8px;
+          }
+        }
+
+        /* Ensure tables are scrollable on small screens */
+        .table-wrapper {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
+        }
+        .table-wrapper::-webkit-scrollbar {
+          height: 6px;
+        }
+        .table-wrapper::-webkit-scrollbar-track {
+          background: rgba(0,0,0,.05);
+        }
+        .table-wrapper::-webkit-scrollbar-thumb {
+          background: rgba(0,0,0,.2);
+          border-radius: 3px;
+        }
       `}</style>
 
       {/* Full-screen overlay while generating */}
@@ -334,7 +445,7 @@ export default function AuditPage() {
         <div className="container">
           {report ? (
             <>
-              <div className="grid cols-2" style={{ alignItems: "start", gap: 16 }}>
+              <div className="grid cols-2" style={{ alignItems: "start", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
                 {/* Scorecard */}
                 <div className="card">
                   <h2 style={{ marginTop: 0 }}>Scorecard</h2>
@@ -413,7 +524,7 @@ export default function AuditPage() {
                     <div style={{ padding: "8px 0" }}>
                       <strong style={{ display: "block", marginBottom: 4 }}>Technical</strong>
                       <span style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>
-                        How easily search engines can find and index your pages.
+                        How easily AI systems can find and index your pages.
                       </span>
                     </div>
                   </div>
@@ -447,7 +558,7 @@ export default function AuditPage() {
                   {report.businessInfo && (
                     <div className="card" style={{ marginBottom: 20 }}>
                       <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>About Your Business</h3>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <table className="business-info-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                         <tbody>
                           <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
                             <td style={{ padding: "10px 12px 10px 0", fontWeight: 700, width: "40%" }}>Business Name</td>
@@ -456,7 +567,7 @@ export default function AuditPage() {
                           <tr>
                             <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Website</td>
                             <td style={{ padding: "10px 0" }}>
-                              <a href={report.businessInfo.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-red)", textDecoration: "none" }}>
+                              <a href={report.businessInfo.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-red)", textDecoration: "none", wordBreak: "break-all" }}>
                                 {report.businessInfo.website}
                               </a>
                             </td>
@@ -473,7 +584,7 @@ export default function AuditPage() {
                   <div style={{ marginTop: 20 }}>
                     <h3 style={{ marginBottom: 12, color: "var(--brand-red)" }}>Four Key Areas We Analyzed</h3>
                     <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
-                      We looked at four important areas that determine how well AI tools and search engines can find, understand, and recommend your business.
+                      We looked at four important areas that determine how well AI tools and AI systems can find, understand, and recommend your business.
                     </p>
                     <div
                       ref={sliderRef}
@@ -483,7 +594,7 @@ export default function AuditPage() {
                     >
                       <div className="auditSlide" data-audit-slide="1">
                         {renderAuditDimension(
-                          "How Well Search Engines Can Find You",
+                          "How Well AI Systems Can Find You",
                           report.explanations?.perCategory?.technicalReadiness,
                           report.explanations?.perCategory?.structure,
                           report.grades,
@@ -585,6 +696,7 @@ export default function AuditPage() {
 
 // Performance Summary Table Component
 function PerformanceSummaryTable({ report }: { report: any }) {
+  const [selectedTier, setSelectedTier] = useState<"Bronze" | "Silver" | "Gold">("Bronze");
   const g = report?.grades || {};
   const s = report?.scores || {};
 
@@ -620,43 +732,29 @@ function PerformanceSummaryTable({ report }: { report: any }) {
     return "F";
   };
 
-  // Calculate "With GPTO" grades (smarter directional improvements)
-  const getWithGPTOGrade = (currentGrade: string, dimension: string, currentScore?: number) => {
+  // Expected outcomes by package (matching GrowthProgressionTable)
+  const expectedOutcomes: Record<"Bronze" | "Silver" | "Gold", string> = {
+    "Bronze": "B-",
+    "Silver": "B+",
+    "Gold": "A"
+  };
+
+  // Calculate "With Package" grades based on tier - use expected outcomes as target
+  const getWithPackageGrade = (currentGrade: string, dimension: string, tier: "Bronze" | "Silver" | "Gold", currentScore?: number) => {
     const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
+    const targetGrade = expectedOutcomes[tier];
     const currentIdx = gradeOrder.indexOf(currentGrade);
-    if (currentIdx === -1) return currentGrade;
+    const targetIdx = gradeOrder.indexOf(targetGrade);
+    
+    if (currentIdx === -1 || targetIdx === -1) return currentGrade;
 
-    // Smarter improvement calculation based on current state
-    let improvement = 1;
-    
-    // Lower grades get bigger improvements
-    if (currentIdx <= 2) { // F, D, C
-      improvement = 2;
-    } else if (currentIdx <= 4) { // B-, B
-      improvement = 1;
-    } else { // B+, A-, A, A+
-      improvement = currentIdx < gradeOrder.length - 1 ? 1 : 0;
-    }
-    
-    // Dimension-specific adjustments
-    if (dimension === "SEO Strength") {
-      if ((g.structure === "D" || g.structure === "F") && (g.technicalReadiness === "D" || g.technicalReadiness === "F")) {
-        improvement = Math.max(improvement, 2);
-      }
-    }
-    if (dimension === "AI Discoverability") {
-      if (g.aiReadiness === "D" || g.aiReadiness === "F" || (currentScore && currentScore < 50)) {
-        improvement = Math.max(improvement, 2);
-      }
-    }
-    if (dimension === "Conversion Clarity") {
-      if ((g.contentDepth === "D" || g.contentDepth === "F") && (g.structure === "D" || g.structure === "F")) {
-        improvement = Math.max(improvement, 2);
-      }
+    // If current grade is already at or above target, return current or target (whichever is better)
+    if (currentIdx >= targetIdx) {
+      return currentGrade; // Already at or above target
     }
 
-    const newIdx = Math.min(gradeOrder.length - 1, currentIdx + improvement);
-    return gradeOrder[newIdx];
+    // Otherwise, return the target grade for that tier
+    return targetGrade;
   };
 
   // Map dimensions with smarter calculations
@@ -677,32 +775,86 @@ function PerformanceSummaryTable({ report }: { report: any }) {
     [0.7, 0.3]
   );
 
-  // Context-aware meaning descriptions
-  const getMeaning = (dimension: string, current: string, withGPTO: string) => {
-    const improvements: Record<string, Record<string, string>> = {
-      "SEO Strength": {
-        "D": "Search engines can find your site but don't understand it well; GPTO helps them understand what you do and who you serve",
-        "C": "Search engines can find your site but need more information; GPTO adds clear details about your services and customers",
-        "B": "Search engines find your site easily; GPTO makes it even clearer so you show up in more relevant searches",
-        "A": "Your site is well-organized for search engines; GPTO fine-tunes everything for the best possible visibility"
+  // Tier-specific detailed descriptions
+  const getMeaning = (dimension: string, current: string, withPackage: string, tier: "Bronze" | "Silver" | "Gold") => {
+    const tierDetails: Record<"Bronze" | "Silver" | "Gold", Record<string, Record<string, string>>> = {
+      "Bronze": {
+        "SEO Strength": {
+          "D": "Essential schema markup on key pages helps AI systems understand your core services. Basic structure improvements make your site more discoverable.",
+          "C": "Essential schema markup clarifies your services for AI systems. Refined messaging on top pages improves how you're found and understood.",
+          "B": "Essential schema markup and refined messaging strengthen your AI visibility. Your site becomes clearer to AI systems searching for what you offer.",
+          "A": "Essential schema markup fine-tunes your already strong foundation. Top-page messaging refinements optimize your AI discoverability."
+        },
+        "AI Discoverability": {
+          "D": "Refined top-page messaging helps AI tools like ChatGPT explain your business. Essential schema markup provides clear signals about what you do.",
+          "C": "Refined messaging ensures AI tools consistently understand your business. Essential schema markup helps them recommend you accurately.",
+          "B": "Refined messaging and essential schema markup help AI tools explain your business more accurately. They'll recommend you more confidently.",
+          "A": "Refined messaging and essential schema markup ensure AI tools always get your business right. Your visibility across AI platforms improves."
+        },
+        "Conversion Clarity": {
+          "D": "Refined top-page messaging clarifies who you help and how. Visitors understand if you're right for them before they leave.",
+          "C": "Refined messaging makes it clearer who you serve and what problems you solve. Visitors can better self-qualify.",
+          "B": "Refined messaging enhances clarity so more qualified visitors take action. Your conversion flow becomes more effective.",
+          "A": "Refined messaging optimizes your already clear site. Visitors arrive better-informed and more ready to engage."
+        },
+        "Brand Signal": {
+          "D": "Refined messaging makes your unique value clear and consistent. Essential schema markup reinforces your brand signals.",
+          "C": "Refined messaging ensures your brand message is consistent and strong. Essential schema markup helps AI systems recognize your brand.",
+          "B": "Refined messaging strengthens your brand consistency. Essential schema markup ensures your brand is recognized across AI platforms.",
+          "A": "Refined messaging and essential schema markup keep your strong brand consistent everywhere AI systems encounter you."
+        }
       },
-      "AI Discoverability": {
-        "D": "AI tools like ChatGPT struggle to explain your business; GPTO rewrites your content so AI tools can clearly describe what you do",
-        "C": "AI tools sometimes understand your business, sometimes don't; GPTO makes sure they always understand correctly",
-        "B": "AI tools can explain your business basics; GPTO helps them explain it more accurately and recommend you more often",
-        "A": "AI tools understand your business well; GPTO ensures they always get it right across all AI tools"
+      "Silver": {
+        "SEO Strength": {
+          "D": "Full-site schema implementation (Organization, Service/Product, Local, FAQ) helps AI systems deeply understand your entire site structure and offerings.",
+          "C": "Full-site schema implementation provides comprehensive signals to AI systems. Your entire site becomes more discoverable and understandable.",
+          "B": "Full-site schema implementation strengthens your AI visibility across all pages. AI systems can better categorize and recommend your services.",
+          "A": "Full-site schema implementation optimizes your strong foundation. Every page is perfectly structured for maximum AI discoverability."
+        },
+        "AI Discoverability": {
+          "D": "Full-site schema implementation helps AI tools understand your complete business. Five-competitor analysis reveals how to improve your AI visibility.",
+          "C": "Full-site schema implementation ensures AI tools understand your business comprehensively. Competitive insights guide improvements to your AI presence.",
+          "B": "Full-site schema implementation helps AI tools explain your business more accurately. Competitive analysis shows how to stand out in AI recommendations.",
+          "A": "Full-site schema implementation ensures AI tools always get your business right. Competitive insights help you maintain leadership in AI discovery."
+        },
+        "Conversion Clarity": {
+          "D": "Full-site schema implementation and structured content improvements clarify your entire site. Visitors understand your value across all pages.",
+          "C": "Full-site schema implementation makes your entire site clearer. Structured content improvements help visitors self-qualify more effectively.",
+          "B": "Full-site schema implementation enhances clarity site-wide. Structured content improvements drive more qualified conversions.",
+          "A": "Full-site schema implementation optimizes your already clear site. Structured content improvements maximize conversion potential."
+        },
+        "Brand Signal": {
+          "D": "Full-site schema implementation reinforces your brand consistently across all pages. Competitive analysis reveals how to strengthen your brand signals.",
+          "C": "Full-site schema implementation ensures your brand message is consistent everywhere. Competitive insights help you differentiate your brand.",
+          "B": "Full-site schema implementation strengthens your brand consistency site-wide. Competitive analysis helps you maintain brand leadership.",
+          "A": "Full-site schema implementation keeps your strong brand consistent everywhere. Competitive insights help you maintain brand dominance."
+        }
       },
-      "Conversion Clarity": {
-        "D": "Visitors come but many leave confused; GPTO adds clear information so visitors know if you're right for them",
-        "C": "Visitors come but some aren't sure if you're a good fit; GPTO makes it clearer who you help and how",
-        "B": "Visitors generally understand your site; GPTO makes it even clearer so more qualified visitors take action",
-        "A": "Your site is clear to visitors; GPTO optimizes everything for the best visitor experience and results"
-      },
-      "Brand Signal": {
-        "D": "Your brand message is weak or confusing; GPTO makes your unique value clear and consistent everywhere",
-        "C": "Your brand exists but isn't always clear; GPTO ensures your brand message is consistent and strong",
-        "B": "Your brand comes through well; GPTO makes sure it's consistently clear everywhere people find you",
-        "A": "Your brand is strong and clear; GPTO keeps it that way and makes it even better"
+      "Gold": {
+        "SEO Strength": {
+          "D": "Dynamic schema adapts in real-time to search signals, ensuring AI systems always understand your latest offerings. Real-time optimization maximizes your visibility.",
+          "C": "Dynamic schema and real-time optimization ensure AI systems always have the most current understanding of your business. Your visibility adapts to trends.",
+          "B": "Dynamic schema and real-time optimization keep your AI visibility at peak performance. AI systems always have the latest information about your services.",
+          "A": "Dynamic schema and real-time optimization maintain your leadership position. AI systems consistently recognize you as the top choice in your category."
+        },
+        "AI Discoverability": {
+          "D": "Real-time optimization ensures AI tools always have current information about your business. 10-competitor mapping reveals how to dominate AI recommendations.",
+          "C": "Real-time optimization keeps AI tools updated with your latest offerings. Advanced competitive intelligence guides your AI visibility strategy.",
+          "B": "Real-time optimization ensures AI tools always recommend you accurately. Multi-market competitive analysis helps you lead in AI discovery.",
+          "A": "Real-time optimization maintains your AI leadership. Advanced competitive intelligence ensures you stay ahead in AI tool recommendations."
+        },
+        "Conversion Clarity": {
+          "D": "Real-time optimization adapts your site based on visitor behavior. AI-supported guidance improves how visitors understand and engage with your brand.",
+          "C": "Real-time optimization enhances clarity based on actual visitor patterns. AI-supported improvements drive more qualified conversions.",
+          "B": "Real-time optimization fine-tunes your site for maximum conversion. AI-supported insights optimize visitor experience continuously.",
+          "A": "Real-time optimization maintains peak conversion performance. AI-supported insights ensure you stay ahead of visitor expectations."
+        },
+        "Brand Signal": {
+          "D": "Real-time optimization ensures your brand signals adapt to market changes. 10-competitor mapping and AI-supported reputation building strengthen your brand authority.",
+          "C": "Real-time optimization keeps your brand signals current and strong. Advanced competitive intelligence and reputation building maintain your brand leadership.",
+          "B": "Real-time optimization ensures your brand stays ahead of competitors. Multi-market authority mapping and reputation building maintain your dominance.",
+          "A": "Real-time optimization maintains your brand's elite position. Advanced competitive intelligence and reputation building ensure you stay the category leader."
+        }
       }
     };
     
@@ -710,66 +862,96 @@ function PerformanceSummaryTable({ report }: { report: any }) {
                     current === "C" || current === "B-" ? "C" :
                     current === "B" || current === "B+" ? "B" : "A";
     
-    return improvements[dimension]?.[gradeKey] || improvements[dimension]?.["C"] || "GPTO improves this dimension.";
+    return tierDetails[tier]?.[dimension]?.[gradeKey] || tierDetails[tier]?.[dimension]?.["C"] || `${tier} package improves this dimension.`;
   };
 
   const dimensions = [
     {
-      name: "Search Engine Visibility",
+      name: "AI System Visibility",
       current: seoCurrent,
-      withGPTO: getWithGPTOGrade(seoCurrent, "SEO Strength", s.structure),
-      meaning: getMeaning("SEO Strength", seoCurrent, getWithGPTOGrade(seoCurrent, "SEO Strength", s.structure))
+      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(seoCurrent, "SEO Strength", tier, s.structure),
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("SEO Strength", seoCurrent, getWithPackageGrade(seoCurrent, "SEO Strength", tier, s.structure), tier)
     },
     {
       name: "AI Tool Understanding",
       current: aiCurrent,
-      withGPTO: getWithGPTOGrade(aiCurrent, "AI Discoverability", s.aiReadiness),
-      meaning: getMeaning("AI Discoverability", aiCurrent, getWithGPTOGrade(aiCurrent, "AI Discoverability", s.aiReadiness))
+      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(aiCurrent, "AI Discoverability", tier, s.aiReadiness),
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("AI Discoverability", aiCurrent, getWithPackageGrade(aiCurrent, "AI Discoverability", tier, s.aiReadiness), tier)
     },
     {
       name: "Website Clarity",
       current: conversionCurrent,
-      withGPTO: getWithGPTOGrade(conversionCurrent, "Conversion Clarity", s.contentDepth),
-      meaning: getMeaning("Conversion Clarity", conversionCurrent, getWithGPTOGrade(conversionCurrent, "Conversion Clarity", s.contentDepth))
+      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(conversionCurrent, "Conversion Clarity", tier, s.contentDepth),
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Conversion Clarity", conversionCurrent, getWithPackageGrade(conversionCurrent, "Conversion Clarity", tier, s.contentDepth), tier)
     },
     {
       name: "Brand Recognition",
       current: brandCurrent,
-      withGPTO: getWithGPTOGrade(brandCurrent, "Brand Signal", s.overall),
-      meaning: getMeaning("Brand Signal", brandCurrent, getWithGPTOGrade(brandCurrent, "Brand Signal", s.overall))
+      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(brandCurrent, "Brand Signal", tier, s.overall),
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Brand Signal", brandCurrent, getWithPackageGrade(brandCurrent, "Brand Signal", tier, s.overall), tier)
     }
   ];
+
+  const tiers: Array<"Bronze" | "Silver" | "Gold"> = ["Bronze", "Silver", "Gold"];
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>
       <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Current vs. Potential Performance</h3>
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
-        See how your site performs today and how much better it could be with GPTO. These scores show the direction of improvement, not exact promises.
+        See how your site performs today and how much better it could be with each GPTO package. These scores show the direction of improvement, not exact promises.
       </p>
-      <div style={{ overflowX: "auto" }}>
+      
+      {/* Tier selector */}
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {tiers.map((tier) => (
+          <button
+            key={tier}
+            onClick={() => setSelectedTier(tier)}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 6,
+              border: selectedTier === tier ? "2px solid var(--brand-red)" : "1px solid rgba(0,0,0,.15)",
+              background: selectedTier === tier ? "rgba(194, 15, 44, 0.1)" : "white",
+              color: selectedTier === tier ? "var(--brand-red)" : "#333",
+              fontWeight: selectedTier === tier ? 700 : 600,
+              cursor: "pointer",
+              fontSize: 14,
+              transition: "all 0.2s ease"
+            }}
+          >
+            With {tier}
+          </button>
+        ))}
+      </div>
+
+      <div className="table-wrapper" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid rgba(0,0,0,.1)" }}>
               <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>Performance Area</th>
               <th style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>Current Status</th>
-              <th style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>With GPTO</th>
+              <th style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>With {selectedTier}</th>
               <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>Impact</th>
             </tr>
           </thead>
           <tbody>
-            {dimensions.map((dim, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                <td style={{ padding: "12px", fontWeight: 600 }}>{dim.name}</td>
-                <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>{dim.current}</td>
-                <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>
-                  {dim.withGPTO}
-                  {dim.current !== dim.withGPTO && (
-                    <span style={{ marginLeft: 6, fontSize: 12, color: "#666" }}>→</span>
-                  )}
-                </td>
-                <td style={{ padding: "12px", lineHeight: 1.5, color: "#333" }}>{dim.meaning}</td>
-              </tr>
-            ))}
+            {dimensions.map((dim, i) => {
+              const withPackage = dim.getWithPackage(selectedTier);
+              const meaning = dim.getMeaning(selectedTier);
+              return (
+                <tr key={i} style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
+                  <td style={{ padding: "12px", fontWeight: 600 }}>{dim.name}</td>
+                  <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>{dim.current}</td>
+                  <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>
+                    {withPackage}
+                    {dim.current !== withPackage && (
+                      <span style={{ marginLeft: 6, fontSize: 12, color: "#666" }}>→</span>
+                    )}
+                  </td>
+                  <td style={{ padding: "12px", lineHeight: 1.5, color: "#333" }}>{meaning}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -796,7 +978,7 @@ function PackageCapabilityTable({ report }: { report: any }) {
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
         Compare capabilities across our service tiers to find the right fit for your needs and goals.
       </p>
-      <div style={{ overflowX: "auto" }}>
+      <div className="table-wrapper" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid rgba(0,0,0,.15)" }}>
@@ -833,7 +1015,9 @@ function PackageCapabilityTable({ report }: { report: any }) {
             fontSize: 16,
             padding: "14px 28px",
             fontWeight: 700,
-            textDecoration: "none"
+            textDecoration: "none",
+            width: "100%",
+            maxWidth: "400px"
           }}
         >
           View Our Packages →
@@ -857,7 +1041,7 @@ function GrowthProgressionTable() {
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
         Each package focuses on different improvements. These scores show what you can typically expect based on similar implementations.
       </p>
-      <div style={{ overflowX: "auto" }}>
+      <div className="table-wrapper" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 400 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid rgba(0,0,0,.15)" }}>
@@ -897,7 +1081,7 @@ function RoadmapTimeline() {
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {phases.map((phase, i) => (
-          <div key={i} style={{ display: "flex", gap: 16, padding: "12px 0", borderBottom: i < phases.length - 1 ? "1px solid rgba(0,0,0,.08)" : "none" }}>
+          <div key={i} className="roadmap-item" style={{ display: "flex", gap: 16, padding: "12px 0", borderBottom: i < phases.length - 1 ? "1px solid rgba(0,0,0,.08)" : "none" }}>
             <div style={{ fontWeight: 700, minWidth: 100 }}>{phase.weeks}</div>
             <div>{phase.focus}</div>
           </div>
@@ -1054,7 +1238,7 @@ function FinalClose({ report }: { report: any }) {
               <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: "#111", marginBottom: 6 }}>
                 Your Recommended Starting Point: <span style={{ color: "var(--brand-red)" }}>{deliverables.tier}</span>
               </p>
-              <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6 }}>
+              <div className="xlarge-text" style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6 }}>
                 {deliverables.price}{" "}
                 <span style={{ fontSize: 18, fontWeight: 800 }}>/ mo</span>
               </div>
@@ -1078,7 +1262,7 @@ function FinalClose({ report }: { report: any }) {
               </ul>
             </div>
 
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <div className="final-close-buttons" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <a
                 className="btn"
                 href={pricingHref}
@@ -1155,7 +1339,7 @@ function renderAuditDimension(
 
   // Determine current grade based on dimension (smarter)
   let currentGrade = "C";
-  if (title.includes("Search Engines Can Find")) {
+  if (title.includes("AI Systems Can Find")) {
     const techGrade = grades?.technicalReadiness || "C";
     const structGrade = grades?.structure || "C";
     currentGrade = calculateCompositeGrade(techGrade, structGrade);
@@ -1209,13 +1393,13 @@ function renderAuditDimension(
   const isLowGrade = currentGrade === "D" || currentGrade === "F" || currentGrade === "C";
   const isHighGrade = currentGrade === "A" || currentGrade === "A+" || currentGrade === "B+";
   
-  if (title.includes("Search Engines Can Find")) {
+  if (title.includes("AI Systems Can Find")) {
     if (isLowGrade) {
-      gptoChanges.push("GPTO makes sure search engines can easily find and understand all your pages.");
-      gptoChanges.push("We'll organize your website information in a way that search engines love, so they can properly list and recommend your site.");
+      gptoChanges.push("GPTO makes sure AI systems can easily find and understand all your pages.");
+      gptoChanges.push("We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site.");
     } else {
-      gptoChanges.push("GPTO makes your website even easier for search engines to find and understand.");
-      gptoChanges.push("We'll improve how your website information is organized so search engines can better list and recommend your site.");
+      gptoChanges.push("GPTO makes your website even easier for AI systems to find and understand.");
+      gptoChanges.push("We'll improve how your website information is organized so AI systems can better list and recommend your site.");
     }
   } else if (title.includes("AI Tools Understand")) {
     if (isLowGrade) {
@@ -1271,7 +1455,7 @@ function renderAuditDimension(
           background: "rgba(0,0,0,.03)",
           border: "1px solid rgba(0,0,0,.08)"
         }}>
-          <div style={{ fontSize: 28, fontWeight: 900 }}>{currentGrade}</div>
+          <div className="large-text scorecard-grade" style={{ fontSize: 28, fontWeight: 900 }}>{currentGrade}</div>
           <div style={{ fontSize: 13, color: "#666", fontWeight: 500 }}>
             {currentGrade === "A" || currentGrade === "A+" ? "Excellent" : 
              currentGrade === "B" || currentGrade === "B+" ? "Good" :

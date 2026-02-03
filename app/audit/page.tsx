@@ -453,33 +453,13 @@ export default function AuditPage() {
                             <td style={{ padding: "10px 12px 10px 0", fontWeight: 700, width: "40%" }}>Business Name</td>
                             <td style={{ padding: "10px 0" }}>{report.businessInfo.businessName || <span className="muted">Not detected</span>}</td>
                           </tr>
-                          <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
+                          <tr>
                             <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Website</td>
                             <td style={{ padding: "10px 0" }}>
                               <a href={report.businessInfo.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand-red)", textDecoration: "none" }}>
                                 {report.businessInfo.website}
                               </a>
                             </td>
-                          </tr>
-                          <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                            <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Industry</td>
-                            <td style={{ padding: "10px 0" }}>{report.businessInfo.industry || <span className="muted">General</span>}</td>
-                          </tr>
-                          <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                            <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Business Model</td>
-                            <td style={{ padding: "10px 0" }}>{report.businessInfo.businessModel || <span className="muted">Service</span>}</td>
-                          </tr>
-                          <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                            <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Target Audience</td>
-                            <td style={{ padding: "10px 0" }}>{report.businessInfo.primaryAudiences || <span className="muted">General audience</span>}</td>
-                          </tr>
-                          <tr style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                            <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Primary Conversion Goal</td>
-                            <td style={{ padding: "10px 0" }}>{report.businessInfo.primaryConversions || <span className="muted">Contact/Lead Form</span>}</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: "10px 12px 10px 0", fontWeight: 700 }}>Conversion Funnel</td>
-                            <td style={{ padding: "10px 0" }}>{report.businessInfo.funnelNotes || <span className="muted">Standard conversion flow</span>}</td>
                           </tr>
                         </tbody>
                       </table>

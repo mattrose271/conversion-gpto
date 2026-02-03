@@ -539,14 +539,18 @@ function generateExecutiveSummary(
   let strengthText = "";
   if (strengths.length > 0) {
     if (strengths.length === 1) {
-      strengthText = `${businessName} has ${strengths[0]}.`;
+      strengthText = `${businessName} has ${strengths[0]}`;
     } else if (strengths.length === 2) {
-      strengthText = `${businessName} has ${strengths[0]} and ${strengths[1]}.`;
+      strengthText = `${businessName} has ${strengths[0]} and ${strengths[1]}`;
     } else {
-      strengthText = `${businessName} has ${strengths.slice(0, -1).join(", ")}, and ${strengths[strengths.length - 1]}.`;
+      strengthText = `${businessName} has ${strengths.slice(0, -1).join(", ")}, and ${strengths[strengths.length - 1]}`;
     }
     if (strengthDetails.length > 0) {
-      strengthText += ` ${strengthDetails[0]}.`;
+      // Integrate detail smoothly into the sentence
+      const detail = strengthDetails[0];
+      strengthText += `; ${detail.charAt(0).toLowerCase() + detail.slice(1)}.`;
+    } else {
+      strengthText += ".";
     }
   } else {
     strengthText = `${businessName} has a functional website with basic online presence.`;
@@ -634,13 +638,6 @@ function generateExecutiveSummary(
   lines.push(strengthText);
   lines.push(constraintText);
   lines.push(unlockText);
-
-  // Add industry-specific context if available
-  if (businessInfo.industry && businessInfo.industry !== "General") {
-    if (constraintSeverity === "high") {
-      lines.push(`In the ${businessInfo.industry} space, clear AI visibility is increasingly critical for discovery and trust.`);
-    }
-  }
 
   // Add tier-specific context intelligently
   if (explanations?.tierWhy?.[0]) {

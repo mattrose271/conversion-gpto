@@ -133,7 +133,7 @@ function summarize(html: string) {
 }
 
 async function crawl(seedUrl: string) {
-  const maxPages = 20; // stability + speed
+  const maxPages = 40; // increased crawl depth for better analysis
   const maxDepth = 2;
 
   const seed = new URL(seedUrl);

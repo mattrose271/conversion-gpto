@@ -149,6 +149,17 @@ export default function AuditPage() {
   }, []);
 
   const g = report?.grades;
+  const s = report?.scores || {};
+
+  // Convert numeric score to letter grade
+  function toGrade(score: number): string {
+    if (score === 100) return "A+";
+    if (score >= 90) return "A";
+    if (score >= 80) return "B";
+    if (score >= 70) return "C";
+    if (score >= 60) return "D";
+    return "F";
+  }
 
   // Friendly score rendering (supports either "A/B/C/D" or "0..100 + grade")
   function scoreCell(label: string, key: string) {
@@ -166,6 +177,17 @@ export default function AuditPage() {
       : g?.aiReadiness !== undefined
       ? "aiReadiness"
       : "aiReadiness";
+
+  // Calculate Overall score as average of the four other scores
+  // Use the same score extraction logic as scoreCell to ensure consistency
+  const aiScoreValue = report?.scores?.[aiKey] ?? report?.scores?.aiReadiness ?? report?.[`score_${aiKey}`] ?? 0;
+  const structureScoreValue = report?.scores?.structure ?? report?.[`score_structure`] ?? 0;
+  const contentDepthScoreValue = report?.scores?.contentDepth ?? report?.[`score_contentDepth`] ?? 0;
+  const technicalScoreValue = report?.scores?.technicalReadiness ?? report?.[`score_technicalReadiness`] ?? 0;
+  
+  // Calculate average: (AI Clarity + Structure + Content Depth + Technical) / 4
+  const overallScore = (aiScoreValue + structureScoreValue + contentDepthScoreValue + technicalScoreValue) / 4;
+  const overallGrade = toGrade(overallScore);
 
   return (
     <div>
@@ -458,7 +480,7 @@ export default function AuditPage() {
                         ["Structure", scoreCell("Structure", "structure"), report.grades?.structure],
                         ["Content Depth", scoreCell("Content Depth", "contentDepth"), report.grades?.contentDepth],
                         ["Technical", scoreCell("Technical", "technicalReadiness"), report.grades?.technicalReadiness],
-                        ["Overall", scoreCell("Overall", "overall"), report.grades?.overall]
+                        ["Overall", `${Math.round(overallScore)} / 100 (${overallGrade})`, overallGrade]
                       ].map(([k, v, grade]) => (
                         <tr key={String(k)} style={{ borderBottom: "1px solid rgba(0,0,0,.06)" }}>
                           <td style={{ padding: "10px 0", fontWeight: 800 }}>{k as string}</td>

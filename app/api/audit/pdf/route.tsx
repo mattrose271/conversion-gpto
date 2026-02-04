@@ -370,18 +370,18 @@ export async function GET(req: Request) {
       return "F";
     };
 
-    const seoCurrent = calculateCompositeGrade(
+    const seoCurrent: string = calculateCompositeGrade(
       [grades.structure || "C", grades.technicalReadiness || "C"],
       [scores.structure || 0, scores.technicalReadiness || 0],
       [0.5, 0.5]
     );
-    const aiCurrent = grades.aiReadiness || "C";
-    const conversionCurrent = calculateCompositeGrade(
+    const aiCurrent: string = grades.aiReadiness || "C";
+    const conversionCurrent: string = calculateCompositeGrade(
       [grades.contentDepth || "C", grades.structure || "C"],
       [scores.contentDepth || 0, scores.structure || 0],
       [0.6, 0.4]
     );
-    const brandCurrent = grades.overall || grades.aiReadiness || calculateCompositeGrade(
+    const brandCurrent: string = grades.overall || grades.aiReadiness || calculateCompositeGrade(
       [grades.aiReadiness || "C", grades.contentDepth || "C"],
       [scores.aiReadiness || 0, scores.contentDepth || 0],
       [0.7, 0.3]

@@ -551,6 +551,23 @@ export default function AuditPage() {
                       </span>
                     </div>
                   </div>
+                  {report.scope && (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        borderTop: "1px solid rgba(0,0,0,.08)",
+                        paddingTop: 12,
+                        fontSize: 13,
+                        color: "#444"
+                      }}
+                    >
+                      <strong>Pages reviewed:</strong>{" "}
+                      {Math.min(report.scope.scannedPages ?? 0, report.scope.maxPages ?? 40)}
+                      <p style={{ margin: "6px 0 0", fontSize: 12, color: "#666" }}>
+                        This number reflects the pages GPTO could find live on your site—if only 15 show up, those were the only public paths it could reach in this audit.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

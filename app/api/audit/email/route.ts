@@ -9,7 +9,12 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   email: z.string().email(),
-  auditId: z.string().uuid().optional()
+  auditId: z.string().uuid().optional(),
+  tier: z.string().optional(),
+  scores: z.record(z.number()).optional(),
+  grades: z.record(z.string()).optional(),
+  tierWhy: z.string().optional(),
+  recommendations: z.array(z.string()).optional()
 });
 
 function generateWelcomeEmailHTML(
@@ -192,6 +197,112 @@ function generateWelcomeEmailText(
   return text;
 }
 
+type AuditSummaryData = {
+  scores?: Record<string, number> | null;
+  grades?: Record<string, string> | null;
+  recommendations?: string[] | null;
+  tierWhy?: string | null;
+};
+
+type AuditSummarySection = {
+  html: string;
+  text: string;
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection | null {
+  const metricDefinitions = [
+    { key: "overall", label: "Overall Score" },
+    { key: "aiReadiness", label: "AI Readiness" },
+    { key: "contentDepth", label: "Content Depth" },
+    { key: "structure", label: "Structure" },
+    { key: "technicalReadiness", label: "Technical Readiness" }
+  ];
+
+  const metricLines = metricDefinitions
+    .map(({ key, label }) => {
+      const rawScore = audit.scores?.[key];
+      const score = typeof rawScore === "number" ? rawScore : null;
+      const grade = audit.grades?.[key];
+      const detailParts: string[] = [];
+      if (score !== null) {
+        detailParts.push(`${Math.round(score)} / 100`);
+      }
+      if (grade) {
+        detailParts.push(`(${grade})`);
+      }
+      if (!detailParts.length) {
+        return null;
+      }
+      return { label, detail: detailParts.join(" ") };
+    })
+    .filter((line): line is { label: string; detail: string } => line !== null);
+
+  const recommendations = Array.isArray(audit.recommendations)
+    ? audit.recommendations.filter(
+        (rec): rec is string => typeof rec === "string" && rec.trim().length > 0
+      )
+    : [];
+  const highlightedRecommendations = recommendations.slice(0, 3);
+
+  if (!metricLines.length && !highlightedRecommendations.length) {
+    return null;
+  }
+
+  const metricHtml = metricLines
+    .map(
+      (line) =>
+        `<p style="margin: 6px 0; font-size: 14px; color: #111111;"><strong>${escapeHtml(
+          line.label
+        )}:</strong> ${escapeHtml(line.detail)}</p>`
+    )
+    .join("");
+
+  const recommendationHtml = highlightedRecommendations.length
+    ? `<div style="margin-top: 12px;"><strong style="font-size: 14px; color: #111111;">Top recommendations</strong><ul style="margin: 8px 0 0; padding-left: 18px; color: #111111;">${highlightedRecommendations
+        .map((rec) => `<li style="margin-bottom: 4px;">${escapeHtml(rec)}</li>`)
+        .join("")}</ul></div>`
+    : "";
+
+  const tierWhyText = audit.tierWhy?.trim();
+  const tierWhyHtml = tierWhyText
+    ? `<div style="margin-top: 12px;"><strong style="font-size: 14px; color: #111111;">Tier insight</strong><p style="margin: 6px 0 0; font-size: 13px; color: #333;">${escapeHtml(
+        tierWhyText
+      )}</p></div>`
+    : "";
+
+  const html = `
+    <div style="margin-top: 24px;">
+      <div style="padding: 16px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: #FCFCFC;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #111111;">Audit snapshot</h3>
+        ${metricHtml}
+        ${recommendationHtml}
+        ${tierWhyHtml}
+      </div>
+    </div>
+  `.trim();
+
+  const metricTextLines = metricLines.map((line) => `${line.label}: ${line.detail}`);
+  const textParts: string[] = ["Audit snapshot:"];
+  if (metricTextLines.length) {
+    textParts.push(...metricTextLines);
+  }
+  if (highlightedRecommendations.length) {
+    textParts.push("", "Top recommendations:", ...highlightedRecommendations.map((rec) => `• ${rec}`));
+  }
+  if (tierWhyText) {
+    textParts.push("", `Tier insight: ${tierWhyText}`);
+  }
+
+  return { html, text: textParts.join("\n") };
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -214,7 +325,14 @@ export async function POST(req: Request) {
 
     // Save email submission to database
     let emailSubmission;
-    let auditTier: string | null = null;
+    let auditTier: string | null = input.tier ?? null;
+    const summaryData: AuditSummaryData = {
+      scores: input.scores ?? null,
+      grades: input.grades ?? null,
+      recommendations: Array.isArray(input.recommendations) ? input.recommendations : null,
+      tierWhy: input.tierWhy ?? null
+    };
+    let auditSummarySection: AuditSummarySection | null = null;
     try {
       emailSubmission = await db.emailSubmission.create({
         data: {
@@ -229,10 +347,24 @@ export async function POST(req: Request) {
         try {
           const audit = await db.audit.findUnique({
             where: { id: input.auditId },
-            select: { tier: true }
+            select: {
+              tier: true,
+              scores: true,
+              grades: true,
+              recommendations: true
+            }
           });
           if (audit?.tier) {
             auditTier = audit.tier;
+          }
+          if (audit?.scores && !summaryData.scores) {
+            summaryData.scores = audit.scores as Record<string, number>;
+          }
+          if (audit?.grades && !summaryData.grades) {
+            summaryData.grades = audit.grades as Record<string, string>;
+          }
+          if (Array.isArray(audit?.recommendations) && !summaryData.recommendations?.length) {
+            summaryData.recommendations = audit.recommendations;
           }
         } catch (auditError: any) {
           console.error("Failed to fetch audit tier:", auditError);
@@ -243,6 +375,8 @@ export async function POST(req: Request) {
       console.error("Failed to save email submission to database:", dbError);
       // Continue even if database save fails
     }
+
+    auditSummarySection = buildAuditSummarySection(summaryData);
 
     let welcomeEmailSent = false;
     let internalEmailSent = false;
@@ -277,10 +411,11 @@ export async function POST(req: Request) {
             <p><strong>Email:</strong> ${input.email}</p>
             ${input.auditId ? `<p><strong>Audit ID:</strong> ${input.auditId}</p>` : ""}
             ${auditTier ? `<p><strong>Recommended Tier:</strong> ${auditTier}</p>` : ""}
+            ${auditSummarySection?.html ?? ""}
             <p>They will now be redirected to the audit page.</p>
           </div>
         `,
-        text: `A new user has requested a free GPTO audit.\n\nEmail: ${input.email}\n${input.auditId ? `Audit ID: ${input.auditId}\n` : ""}${auditTier ? `Recommended Tier: ${auditTier}\n` : ""}They will now be redirected to the audit page.`,
+        text: `A new user has requested a free GPTO audit.\n\nEmail: ${input.email}\n${input.auditId ? `Audit ID: ${input.auditId}\n` : ""}${auditTier ? `Recommended Tier: ${auditTier}\n` : ""}${auditSummarySection?.text ? `\n${auditSummarySection.text}\n` : ""}They will now be redirected to the audit page.`,
         replyTo: input.email,
       });
 

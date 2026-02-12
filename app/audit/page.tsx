@@ -7,11 +7,16 @@ import { getTierDeliverables } from "@/lib/data/tierDeliverables";
 
 type Report = any;
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function AuditPage() {
   const [url, setUrl] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailLocked, setEmailLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
 
   // Progress bar state (estimated)
   const [progress, setProgress] = useState(0);
@@ -50,6 +55,49 @@ export default function AuditPage() {
     };
   }, [loading]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedModalEmail = window.localStorage.getItem("gpto_modal_email")?.trim() || "";
+    const storedSavedEmail = window.localStorage.getItem("gpto_saved_email")?.trim() || "";
+    if (storedModalEmail) {
+      setEmail(storedModalEmail);
+      setEmailLocked(true);
+    } else if (storedSavedEmail) {
+      setEmail(storedSavedEmail);
+    }
+
+    const updateFromModalEmail = (value?: string | null) => {
+      const trimmed = (value ?? "").trim();
+      if (trimmed) {
+        setEmail(trimmed);
+        setEmailLocked(true);
+      } else {
+        setEmail("");
+        setEmailLocked(false);
+      }
+    };
+
+    const handleCustomEvent = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      updateFromModalEmail(detail);
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "gpto_modal_email") {
+        updateFromModalEmail(event.newValue);
+      }
+    };
+
+    window.addEventListener("gptoEmailUpdate", handleCustomEvent as EventListener);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("gptoEmailUpdate", handleCustomEvent as EventListener);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
   async function run() {
     if (loading) return;
 
@@ -77,6 +125,64 @@ export default function AuditPage() {
       setProgress(100);
       setReport(data);
 
+      // Store email in localStorage if provided
+      if (email.trim()) {
+        void sendAuditEmailRequest(email, data);
+      } else {
+        setEmailFeedback(null);
+      }
+
+      // Send audit results to internal team (AUDIT_EMAIL_RECIPIENTS)
+      try {
+        // Ensure URL has protocol
+        let normalizedUrl = url.trim();
+        if (normalizedUrl && !normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+          normalizedUrl = `https://${normalizedUrl}`;
+        }
+        
+        const notifyPayload: Record<string, unknown> = {
+          userEmail: email.trim() || "No email provided",
+          url: normalizedUrl,
+        };
+        
+        if (data.auditId) notifyPayload.auditId = data.auditId;
+        if (data.tier) notifyPayload.tier = data.tier;
+        if (data.scores) notifyPayload.scores = data.scores;
+        if (data.grades) notifyPayload.grades = data.grades;
+        if (data.businessInfo) notifyPayload.businessInfo = data.businessInfo;
+        if (data.executiveSummary) notifyPayload.executiveSummary = data.executiveSummary;
+        
+        const tierWhyRaw = Array.isArray(data.explanations?.tierWhy)
+          ? data.explanations?.tierWhy[0]
+          : data.explanations?.tierWhy;
+        const tierWhy = typeof tierWhyRaw === "string" && tierWhyRaw.trim() ? tierWhyRaw.trim() : null;
+        if (tierWhy) notifyPayload.tierWhy = tierWhy;
+        
+        if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+          // Convert recommendation objects to strings (extract title if it's an object)
+          notifyPayload.recommendations = data.recommendations.map((rec: any) => {
+            if (typeof rec === "string") {
+              return rec;
+            } else if (rec && typeof rec === "object" && rec.title) {
+              return rec.title;
+            } else {
+              return String(rec);
+            }
+          });
+        }
+
+        // Send notification email to AUDIT_EMAIL_RECIPIENTS (fire and forget - don't block on errors)
+        fetch("/api/audit/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(notifyPayload)
+        }).catch((err) => {
+          console.warn("Failed to send audit notification:", err);
+        });
+      } catch (err) {
+        console.warn("Error preparing audit notification:", err);
+      }
+
       // Persist recommended tier and audit ID for later flows if needed
       try {
         window.localStorage.setItem("gpto_recommended_tier", String(data.tier || ""));
@@ -86,13 +192,30 @@ export default function AuditPage() {
       } catch {}
 
       setTimeout(() => {
-        setLoading(false);
-        setProgress(0);
-      }, 350);
-    } catch (e: any) {
       setLoading(false);
       setProgress(0);
-      setError(e.message || "Something went wrong");
+    }, 350);
+  } catch (e: any) {
+    setLoading(false);
+    setProgress(0);
+    setError(e.message || "Something went wrong");
+  }
+}
+
+  function sendAuditEmailRequest(emailAddress: string, reportData: Report) {
+    const normalized = emailAddress.trim();
+    if (!EMAIL_REGEX.test(normalized)) {
+      setEmailFeedback("Enter a valid email to receive your audit summary.");
+      return;
+    }
+
+    try {
+      // Store email in localStorage
+      window.localStorage.setItem("gpto_saved_email", normalized);
+      setEmailFeedback(null); // Clear feedback since we're just storing, not sending
+    } catch (err: any) {
+      console.error("Email storage error:", err);
+      // Silently fail - email storage is not critical
     }
   }
 
@@ -188,6 +311,10 @@ export default function AuditPage() {
   // Calculate average: (AI Clarity + Structure + Content Depth + Technical) / 4
   const overallScore = (aiScoreValue + structureScoreValue + contentDepthScoreValue + technicalScoreValue) / 4;
   const overallGrade = toGrade(overallScore);
+  const emailFeedbackColor =
+    emailFeedback && (/emailed/.test(emailFeedback) || emailFeedback.includes("couldn't") || emailFeedback.startsWith("Enter"))
+      ? "var(--brand-red)"
+      : "#555";
 
   return (
     <div>
@@ -449,7 +576,21 @@ export default function AuditPage() {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="example.com"
               aria-label="Website URL"
-              style={{ minWidth: "min(100%, 260px)", flex: 1 }}
+              style={{ minWidth: "min(100%, 260px)", flex: "1 1 260px" }}
+            />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              aria-label="Email to receive the report"
+              style={{
+                minWidth: "min(100%, 260px)",
+                flex: "1 1 260px",
+                background: emailLocked ? "rgba(0,0,0,0.04)" : "white",
+                cursor: emailLocked ? "not-allowed" : "auto"
+              }}
+              readOnly={emailLocked}
             />
             <button className="btn" type="submit" disabled={loading || !url.trim()} style={{ minWidth: "min(100%, 140px)" }}>
               {loading ? "Generating…" : "Generate"}
@@ -458,6 +599,18 @@ export default function AuditPage() {
               See Plans
             </a>
           </form>
+          {emailFeedback && (
+            <p
+              aria-live="polite"
+              style={{
+                marginTop: 10,
+                fontSize: 13,
+                color: emailFeedbackColor
+              }}
+            >
+              {emailFeedback}
+            </p>
+          )}
 
           {error && <p style={{ marginTop: 12, color: "var(--brand-red)" }}>{error}</p>}
         </div>

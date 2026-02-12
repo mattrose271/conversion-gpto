@@ -32,45 +32,39 @@ export default function EmailModal({ isOpen, onClose, onSuccess }: EmailModalPro
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === "undefined") return;
+
+    const storedEmail = window.localStorage.getItem("gpto_modal_email") || "";
+    if (storedEmail) {
+      setEmail(storedEmail);
+    }
+  }, [isOpen]);
+
   if (!isOpen || !mounted) return null;
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      // Try to get audit ID from localStorage if available
-      const auditId = typeof window !== "undefined" 
-        ? window.localStorage.getItem("gpto_latest_audit_id") 
-        : null;
-
-      const res = await fetch("/api/audit/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email,
-          auditId: auditId || undefined
-        })
-      });
-
-      // Try to parse response, but don't block on errors
-      try {
-        const data = await res.json();
-        if (!res.ok) {
-          console.warn("Email submission warning:", data?.error || "Unknown error");
-        }
-      } catch {
-        // If response parsing fails, log but continue
-        console.warn("Email submission warning: Could not parse response");
+      // Store email in localStorage
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("gpto_modal_email", email);
+        window.dispatchEvent(
+          new CustomEvent("gptoEmailUpdate", {
+            detail: email
+          })
+        );
       }
 
-      // Always proceed to audit page regardless of email submission result
+      // Proceed to audit page
       onSuccess();
     } catch (err: any) {
       // Log error but still proceed
-      console.warn("Email submission error:", err?.message || "Unknown error");
-      // Still redirect to audit page even if there's an error
+      console.warn("Email storage error:", err?.message || "Unknown error");
       onSuccess();
     } finally {
       setLoading(false);
@@ -191,11 +185,21 @@ export default function EmailModal({ isOpen, onClose, onSuccess }: EmailModalPro
             </label>
             <input
               id="email-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (typeof window !== "undefined") {
+                window.localStorage.setItem("gpto_modal_email", e.target.value);
+                window.dispatchEvent(
+                  new CustomEvent("gptoEmailUpdate", {
+                    detail: e.target.value
+                  })
+                );
+              }
+            }}
+            placeholder="your@email.com"
+            required
               disabled={loading}
               autoFocus
               style={{

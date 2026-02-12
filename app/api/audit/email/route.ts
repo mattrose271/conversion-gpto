@@ -364,7 +364,16 @@ export async function POST(req: Request) {
             summaryData.grades = audit.grades as Record<string, string>;
           }
           if (Array.isArray(audit?.recommendations) && !summaryData.recommendations?.length) {
-            summaryData.recommendations = audit.recommendations;
+            // Convert JsonArray to string array, extracting title from objects if needed
+            summaryData.recommendations = audit.recommendations.map((rec: any) => {
+              if (typeof rec === "string") {
+                return rec;
+              } else if (rec && typeof rec === "object" && rec.title) {
+                return rec.title;
+              } else {
+                return String(rec);
+              }
+            }).filter((rec): rec is string => typeof rec === "string");
           }
         } catch (auditError: any) {
           console.error("Failed to fetch audit tier:", auditError);

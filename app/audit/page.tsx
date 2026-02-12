@@ -128,6 +128,60 @@ export default function AuditPage() {
       // Store email in localStorage if provided
       if (email.trim()) {
         void sendAuditEmailRequest(email, data);
+        
+        // Send audit report email to user
+        try {
+          const emailPayload: Record<string, unknown> = {
+            email: email.trim(),
+          };
+
+          if (data.auditId) emailPayload.auditId = data.auditId;
+          if (data.tier) emailPayload.tier = data.tier;
+          if (data.scores) emailPayload.scores = data.scores;
+          if (data.grades) emailPayload.grades = data.grades;
+          if (data.businessInfo) emailPayload.businessInfo = data.businessInfo;
+          if (data.executiveSummary) emailPayload.executiveSummary = data.executiveSummary;
+
+          const tierWhyRaw = Array.isArray(data.explanations?.tierWhy)
+            ? data.explanations?.tierWhy[0]
+            : data.explanations?.tierWhy;
+          const tierWhy = typeof tierWhyRaw === "string" && tierWhyRaw.trim() ? tierWhyRaw.trim() : null;
+          if (tierWhy) emailPayload.tierWhy = tierWhy;
+
+          if (Array.isArray(data.recommendations) && data.recommendations.length > 0) {
+            // Convert recommendation objects to strings (extract title if it's an object)
+            emailPayload.recommendations = data.recommendations.map((rec: any) => {
+              if (typeof rec === "string") {
+                return rec;
+              } else if (rec && typeof rec === "object" && rec.title) {
+                return rec.title;
+              } else {
+                return String(rec);
+              }
+            });
+          }
+
+          // Send email to user and show feedback
+          try {
+            const emailRes = await fetch("/api/audit/email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(emailPayload)
+            });
+            const emailData = await emailRes.json().catch(() => ({}));
+            if (emailRes.ok && emailData?.welcomeEmailSent) {
+              setEmailFeedback(`Report emailed to ${email.trim()}. Check your inbox (and spam folder).`);
+            } else {
+              const errMsg = emailData?.error || (!emailRes.ok ? "Server error" : "Email service unavailable");
+              setEmailFeedback(`Couldn't send email: ${errMsg}. Check spam folder or try again.`);
+            }
+          } catch (err) {
+            console.warn("Failed to send audit email to user:", err);
+            setEmailFeedback("Couldn't send email. Please try again.");
+          }
+        } catch (err) {
+          console.warn("Error preparing audit email:", err);
+        }
       } else {
         setEmailFeedback(null);
       }

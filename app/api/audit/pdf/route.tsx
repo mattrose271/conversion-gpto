@@ -750,31 +750,22 @@ export async function GET(req: Request) {
           </View>
 
           {/* Recommended Package */}
-          {tier && tier !== "—" && packageDetails && (
+          {tier && tier !== "—" && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Your Recommended Starting Point: {packageDetails.tier}</Text>
+              <Text style={styles.sectionTitle}>Recommended Package</Text>
               <View style={styles.box}>
-                <Text style={[styles.boxTitle, { textAlign: "center", marginBottom: 8 }]}>
-                  {packageDetails.tier} — {packageDetails.title}
+                <Text style={styles.boxTitle}>{packageDetails?.tier} — {packageDetails?.title}</Text>
+                <Text style={{ fontSize: 11, fontWeight: 700, color: BRAND_RED, marginTop: 4 }}>
+                  {packageDetails?.price}
                 </Text>
-                <Text style={{ fontSize: 14, fontWeight: 700, color: BRAND_RED, textAlign: "center", marginBottom: 6 }}>
-                  {packageDetails.price} / mo
-                </Text>
-                <Text style={{ fontSize: 10, lineHeight: 1.5, textAlign: "center", marginBottom: 12 }}>
-                  {packageDetails.subtitle}
+                <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
+                  {packageDetails?.subtitle}
                 </Text>
                 {tierWhy && (
-                  <Text style={{ fontSize: 9, lineHeight: 1.4, marginBottom: 12, color: "#666", textAlign: "center" }}>
+                  <Text style={{ fontSize: 9, lineHeight: 1.4, marginTop: 6, color: "#666" }}>
                     {tierWhy}
                   </Text>
                 )}
-                <View style={{ height: 1, backgroundColor: "#EAEAEA", marginVertical: 10 }} />
-                <Text style={[styles.boxTitle, { fontSize: 11, marginBottom: 8 }]}>What's Included:</Text>
-                {packageDetails.deliverables.map((deliverable, index) => (
-                  <Text key={index} style={[styles.bullet, { fontSize: 9, lineHeight: 1.5 }]}>
-                    • {deliverable}
-                  </Text>
-                ))}
               </View>
             </View>
           )}

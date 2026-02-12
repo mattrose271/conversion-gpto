@@ -14,13 +14,19 @@ const Body = z.object({
   scores: z.record(z.number()).optional(),
   grades: z.record(z.string()).optional(),
   tierWhy: z.string().optional(),
-  recommendations: z.array(z.string()).optional()
+  recommendations: z.array(z.string()).optional(),
+  businessInfo: z.object({
+    businessName: z.string().optional(),
+    website: z.string().optional(),
+  }).optional(),
+  executiveSummary: z.string().optional(),
 });
 
 function generateWelcomeEmailHTML(
   userEmail: string,
   tier: string | null,
-  contactEmails: string[]
+  contactEmails: string[],
+  auditSummary?: AuditSummarySection | null
 ): string {
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL || "";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "";
@@ -72,10 +78,19 @@ function generateWelcomeEmailHTML(
                 <strong style="color: #C20F2C;">What is GPTO?</strong> GPTO (GPT Optimization) helps your website perform in AI-driven search and answer engines. We improve clarity, structure, content depth, and machine-readability so your brand is easier to understand, trust, and recommend.
               </p>
               <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.5; color: #111111;">
-                Your audit is being processed. Once complete, you'll receive detailed insights about your website's AI readiness and discover opportunities to optimize your online presence.
+                ${auditSummary ? "Your audit is complete! Below are your detailed insights about your website's AI readiness and opportunities to optimize your online presence." : "Your audit is being processed. Once complete, you'll receive detailed insights about your website's AI readiness and discover opportunities to optimize your online presence."}
               </p>
             </td>
           </tr>
+
+          ${auditSummary ? `
+          <!-- Audit Results Section -->
+          <tr>
+            <td style="padding: 0 32px 32px;">
+              ${auditSummary.html}
+            </td>
+          </tr>
+          ` : ""}
 
           <!-- All Tier Deliverables Section -->
           <tr>
@@ -160,12 +175,17 @@ function generateWelcomeEmailHTML(
 function generateWelcomeEmailText(
   userEmail: string,
   tier: string | null,
-  contactEmails: string[]
+  contactEmails: string[],
+  auditSummary?: AuditSummarySection | null
 ): string {
   let text = `Welcome to ConversionGPTO\n\n`;
   text += `Thank you for requesting your free GPTO audit! We're excited to help you improve your AI visibility and search performance.\n\n`;
   text += `What is GPTO? GPTO (GPT Optimization) helps your website perform in AI-driven search and answer engines. We improve clarity, structure, content depth, and machine-readability so your brand is easier to understand, trust, and recommend.\n\n`;
-  text += `Your audit is being processed. Once complete, you'll receive detailed insights about your website's AI readiness and discover opportunities to optimize your online presence.\n\n`;
+  text += `${auditSummary ? "Your audit is complete! Below are your detailed insights about your website's AI readiness and opportunities to optimize your online presence.\n\n" : "Your audit is being processed. Once complete, you'll receive detailed insights about your website's AI readiness and discover opportunities to optimize your online presence.\n\n"}`;
+  
+  if (auditSummary) {
+    text += `${auditSummary.text}\n\n`;
+  }
 
   text += `Our Service Tiers\n\n`;
   tierDeliverables.forEach((deliverable) => {
@@ -202,6 +222,8 @@ type AuditSummaryData = {
   grades?: Record<string, string> | null;
   recommendations?: string[] | null;
   tierWhy?: string | null;
+  businessInfo?: { businessName?: string; website?: string } | null;
+  executiveSummary?: string | null;
 };
 
 type AuditSummarySection = {
@@ -213,7 +235,9 @@ function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection | null {
@@ -249,20 +273,25 @@ function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection 
         (rec): rec is string => typeof rec === "string" && rec.trim().length > 0
       )
     : [];
-  const highlightedRecommendations = recommendations.slice(0, 3);
+  const highlightedRecommendations = recommendations.slice(0, 5);
+  const tierWhyText = audit.tierWhy?.trim();
+  const hasBusinessInfo = audit.businessInfo && (audit.businessInfo.businessName || audit.businessInfo.website);
+  const hasExecutiveSummary = Boolean(audit.executiveSummary?.trim());
 
-  if (!metricLines.length && !highlightedRecommendations.length) {
+  if (!metricLines.length && !highlightedRecommendations.length && !tierWhyText && !hasBusinessInfo && !hasExecutiveSummary) {
     return null;
   }
 
-  const metricHtml = metricLines
-    .map(
-      (line) =>
-        `<p style="margin: 6px 0; font-size: 14px; color: #111111;"><strong>${escapeHtml(
-          line.label
-        )}:</strong> ${escapeHtml(line.detail)}</p>`
-    )
-    .join("");
+  const metricHtml = metricLines.length
+    ? metricLines
+        .map(
+          (line) =>
+            `<p style="margin: 6px 0; font-size: 14px; color: #111111;"><strong>${escapeHtml(
+              line.label
+            )}:</strong> ${escapeHtml(line.detail)}</p>`
+        )
+        .join("")
+    : "<p style='color: #666;'>No scores available</p>";
 
   const recommendationHtml = highlightedRecommendations.length
     ? `<div style="margin-top: 12px;"><strong style="font-size: 14px; color: #111111;">Top recommendations</strong><ul style="margin: 8px 0 0; padding-left: 18px; color: #111111;">${highlightedRecommendations
@@ -270,11 +299,18 @@ function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection 
         .join("")}</ul></div>`
     : "";
 
-  const tierWhyText = audit.tierWhy?.trim();
   const tierWhyHtml = tierWhyText
     ? `<div style="margin-top: 12px;"><strong style="font-size: 14px; color: #111111;">Tier insight</strong><p style="margin: 6px 0 0; font-size: 13px; color: #333;">${escapeHtml(
         tierWhyText
       )}</p></div>`
+    : "";
+
+  const businessInfoHtml = hasBusinessInfo
+    ? `<div style="margin-top: 12px;"><strong style="font-size: 14px; color: #111111;">Business information</strong><ul style="margin: 8px 0 0; padding-left: 18px; color: #111111;">${audit.businessInfo?.businessName ? `<li><strong>Business Name:</strong> ${escapeHtml(String(audit.businessInfo.businessName))}</li>` : ""}${audit.businessInfo?.website ? `<li><strong>Website:</strong> <a href="${escapeHtml(String(audit.businessInfo.website))}">${escapeHtml(String(audit.businessInfo.website))}</a></li>` : ""}</ul></div>`
+    : "";
+
+  const executiveSummaryHtml = hasExecutiveSummary
+    ? `<div style="margin-top: 12px;"><strong style="font-size: 14px; color: #111111;">Executive summary</strong><p style="margin: 6px 0 0; font-size: 13px; color: #333; line-height: 1.5;">${escapeHtml(String(audit.executiveSummary!))}</p></div>`
     : "";
 
   const html = `
@@ -284,6 +320,8 @@ function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection 
         ${metricHtml}
         ${recommendationHtml}
         ${tierWhyHtml}
+        ${businessInfoHtml}
+        ${executiveSummaryHtml}
       </div>
     </div>
   `.trim();
@@ -299,6 +337,14 @@ function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection 
   if (tierWhyText) {
     textParts.push("", `Tier insight: ${tierWhyText}`);
   }
+  if (hasBusinessInfo) {
+    textParts.push("", "Business information:");
+    if (audit.businessInfo?.businessName) textParts.push(`Business Name: ${audit.businessInfo.businessName}`);
+    if (audit.businessInfo?.website) textParts.push(`Website: ${audit.businessInfo.website}`);
+  }
+  if (hasExecutiveSummary) {
+    textParts.push("", `Executive summary: ${audit.executiveSummary}`);
+  }
 
   return { html, text: textParts.join("\n") };
 }
@@ -306,6 +352,20 @@ function buildAuditSummarySection(audit: AuditSummaryData): AuditSummarySection 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    // Normalize recommendations: convert objects to strings (match notify endpoint)
+    if (Array.isArray(body.recommendations)) {
+      body.recommendations = body.recommendations.map((rec: any) => {
+        if (typeof rec === "string") {
+          return rec;
+        } else if (rec && typeof rec === "object" && rec.title) {
+          return rec.title;
+        } else {
+          return String(rec);
+        }
+      });
+    }
+
     const input = Body.parse(body);
 
     // Get recipients from environment variable (for internal notifications)
@@ -330,7 +390,9 @@ export async function POST(req: Request) {
       scores: input.scores ?? null,
       grades: input.grades ?? null,
       recommendations: Array.isArray(input.recommendations) ? input.recommendations : null,
-      tierWhy: input.tierWhy ?? null
+      tierWhy: input.tierWhy ?? null,
+      businessInfo: input.businessInfo ?? null,
+      executiveSummary: input.executiveSummary ?? null
     };
     let auditSummarySection: AuditSummarySection | null = null;
     try {
@@ -389,23 +451,23 @@ export async function POST(req: Request) {
 
     let welcomeEmailSent = false;
     let internalEmailSent = false;
+    let emailErrorMsg: string | null = null;
 
     // Send welcome email to user
     try {
       const welcomeEmailResult = await sendEmail({
         to: input.email,
         subject: "Welcome to ConversionGPTO - Your GPTO Audit is Ready",
-        html: generateWelcomeEmailHTML(input.email, auditTier, recipients),
-        text: generateWelcomeEmailText(input.email, auditTier, recipients),
+        html: generateWelcomeEmailHTML(input.email, auditTier, recipients, auditSummarySection),
+        text: generateWelcomeEmailText(input.email, auditTier, recipients, auditSummarySection),
       });
 
       welcomeEmailSent = true;
       console.log("Welcome email sent successfully:", welcomeEmailResult.messageId);
     } catch (emailError: any) {
-      console.error("Failed to send welcome email:", emailError);
-      if (emailError?.message) {
-        console.error("Welcome email error details:", emailError.message);
-      }
+      const msg = emailError?.message || String(emailError);
+      emailErrorMsg = msg;
+      console.error("Failed to send welcome email:", msg);
     }
 
     // Send internal notification email to team
@@ -442,7 +504,8 @@ export async function POST(req: Request) {
       message: "Email recorded.",
       welcomeEmailSent,
       internalEmailSent,
-      emailSubmissionId: emailSubmission?.id
+      emailSubmissionId: emailSubmission?.id,
+      ...(emailErrorMsg && { error: emailErrorMsg }),
     });
   } catch (e: any) {
     // Handle validation errors

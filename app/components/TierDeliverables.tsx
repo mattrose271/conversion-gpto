@@ -39,7 +39,7 @@ export default function TierDeliverables({ tier, websiteUrl = "" }: TierDelivera
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6 }}>
           {deliverables.price}{" "}
-          <span style={{ fontSize: 18, fontWeight: 800 }}>/ mo</span>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>/ 3 months</span>
         </div>
         <div className="muted" style={{ marginTop: 8 }}>
           {deliverables.subtitle}

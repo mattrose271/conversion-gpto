@@ -30,11 +30,10 @@ function generateWelcomeEmailHTML(
 ): string {
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL || "";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "";
-  
-  // Build Calendly URL with redirect to return to website
+
   const buildCalendlyUrlWithRedirect = () => {
     if (!calendlyUrl) return calendlyUrl;
-    if (!siteUrl) return calendlyUrl; // If no site URL configured, return original
+    if (!siteUrl) return calendlyUrl;
     try {
       const url = new URL(calendlyUrl);
       url.searchParams.set("redirect", siteUrl);
@@ -43,7 +42,7 @@ function generateWelcomeEmailHTML(
       return calendlyUrl;
     }
   };
-  
+
   const calendlyUrlWithRedirect = buildCalendlyUrlWithRedirect();
 
   return `
@@ -67,7 +66,7 @@ function generateWelcomeEmailHTML(
               </h1>
             </td>
           </tr>
-          
+
           <!-- Welcome Message -->
           <tr>
             <td style="padding: 32px;">
@@ -105,7 +104,7 @@ function generateWelcomeEmailHTML(
                 </h3>
                 <div style="margin: 12px 0;">
                   <div style="font-size: 28px; font-weight: 900; line-height: 1; margin-bottom: 4px; color: #111111;">
-                    ${deliverable.price} <span style="font-size: 16px; font-weight: 800;">/ mo</span>
+                    ${deliverable.price} <span style="font-size: 16px; font-weight: 800;">/ 3 months</span>
                   </div>
                   <div style="margin-top: 6px; color: #666; font-size: 14px;">
                     ${deliverable.subtitle}
@@ -122,6 +121,15 @@ function generateWelcomeEmailHTML(
             </td>
           </tr>
 
+          <!-- Compliance Footer -->
+          <tr>
+            <td style="padding: 16px 32px; border-top: 1px solid #eee; background-color: #F9FAFB;">
+              <p style="margin: 0; font-size: 11px; color: #666; line-height: 1.5;">
+                This assessment reflects observable structural and content signals. It does not measure traffic, rankings, lead quality, conversion rates, or revenue performance. GPTO strengthens visibility conditions and authority signals but does not guarantee placement, traffic, or business outcomes.
+              </p>
+            </td>
+          </tr>
+
           <!-- Contact Section -->
           <tr>
             <td style="padding: 0 32px 32px;">
@@ -134,7 +142,7 @@ function generateWelcomeEmailHTML(
                 </p>
                 ${calendlyUrl ? `
                 <div style="text-align: center;">
-                  <a href="${calendlyUrlWithRedirect}" 
+                  <a href="${calendlyUrlWithRedirect}"
                      style="display: inline-block; padding: 12px 24px; background-color: #C20F2C; color: #FFFFFF; text-decoration: none; border-radius: 999px; font-weight: 600; text-align: center; min-width: 200px;">
                     Schedule a Call
                   </a>
@@ -190,7 +198,7 @@ function generateWelcomeEmailText(
   text += `Our Service Tiers\n\n`;
   tierDeliverables.forEach((deliverable) => {
     text += `${deliverable.tier} Tier - ${deliverable.title}\n`;
-    text += `${deliverable.price} / mo\n`;
+    text += `${deliverable.price} / 3 months\n`;
     text += `${deliverable.subtitle}\n\n`;
     deliverable.deliverables.forEach((item) => {
       text += `• ${item}\n`;
@@ -198,6 +206,8 @@ function generateWelcomeEmailText(
     text += `\n`;
   });
 
+  text += `---\n`;
+  text += `This assessment reflects observable structural and content signals. It does not measure traffic, rankings, lead quality, conversion rates, or revenue performance. GPTO strengthens visibility conditions and authority signals but does not guarantee placement, traffic, or business outcomes.\n\n`;
   text += `Reach Out to Us\n`;
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL || "";
   if (calendlyUrl) {
@@ -210,7 +220,7 @@ function generateWelcomeEmailText(
     });
   }
 
-  text += `\n---\n`;
+  text += `\n`;
   text += `ConversionGPTO\n`;
   text += `AI Visibility Optimization for Modern Businesses\n`;
 
@@ -413,12 +423,10 @@ export async function POST(req: Request) {
               tier: true,
               scores: true,
               grades: true,
-              recommendations: true
-            }
+              recommendations: true,
+            },
           });
-          if (audit?.tier) {
-            auditTier = audit.tier;
-          }
+          if (audit?.tier) auditTier = audit.tier;
           if (audit?.scores && !summaryData.scores) {
             summaryData.scores = audit.scores as Record<string, number>;
           }
@@ -426,20 +434,14 @@ export async function POST(req: Request) {
             summaryData.grades = audit.grades as Record<string, string>;
           }
           if (Array.isArray(audit?.recommendations) && !summaryData.recommendations?.length) {
-            // Convert JsonArray to string array, extracting title from objects if needed
-            summaryData.recommendations = audit.recommendations.map((rec: any) => {
-              if (typeof rec === "string") {
-                return rec;
-              } else if (rec && typeof rec === "object" && rec.title) {
-                return rec.title;
-              } else {
-                return String(rec);
-              }
-            }).filter((rec): rec is string => typeof rec === "string");
+            summaryData.recommendations = audit.recommendations
+              .map((rec: any) =>
+                typeof rec === "string" ? rec : rec?.title ?? String(rec)
+              )
+              .filter((rec): rec is string => typeof rec === "string");
           }
         } catch (auditError: any) {
           console.error("Failed to fetch audit tier:", auditError);
-          // Continue without tier
         }
       }
     } catch (dbError: any) {

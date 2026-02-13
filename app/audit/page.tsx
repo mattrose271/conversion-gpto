@@ -1,9 +1,12 @@
 "use client";
 
-// Trigger redeploy - Performance Summary Table updates
 import { useEffect, useRef, useState } from "react";
 import TierDeliverables from "../components/TierDeliverables";
 import { getTierDeliverables } from "@/lib/data/tierDeliverables";
+import AuditPrepModal, { type AuditPrepData } from "../components/AuditPrepModal";
+import { ProposalSection } from "../components/ProposalSection";
+import { CompetitiveSnapshot } from "../components/CompetitiveSnapshot";
+import { ComplianceFooter } from "../components/ComplianceFooter";
 
 type Report = any;
 
@@ -17,6 +20,7 @@ export default function AuditPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
+  const [showPrepModal, setShowPrepModal] = useState(false);
 
   // Progress bar state (estimated)
   const [progress, setProgress] = useState(0);
@@ -98,18 +102,30 @@ export default function AuditPage() {
     };
   }, []);
 
-  async function run() {
+  function handleGenerateClick() {
+    if (!url.trim()) return;
+    setShowPrepModal(true);
+  }
+
+  async function runAudit(prepData: AuditPrepData) {
     if (loading) return;
 
     setError(null);
     setReport(null);
     setLoading(true);
+    setShowPrepModal(false);
 
     try {
+      const body: Record<string, unknown> = {
+        url,
+        email: email.trim() || undefined,
+        focusArea: prepData.focusArea || undefined,
+        competitors: prepData.competitors?.length ? prepData.competitors : undefined,
+      };
       const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url })
+        body: JSON.stringify(body),
       });
       const data = await res.json();
 
@@ -621,7 +637,7 @@ export default function AuditPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (!loading && url.trim()) run();
+              if (!loading && url.trim()) handleGenerateClick();
             }}
             style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}
           >
@@ -653,6 +669,12 @@ export default function AuditPage() {
               See Plans
             </a>
           </form>
+
+          <AuditPrepModal
+            isOpen={showPrepModal}
+            onClose={() => setShowPrepModal(false)}
+            onSuccess={(prepData) => runAudit(prepData)}
+          />
           {emailFeedback && (
             <p
               aria-live="polite"
@@ -714,8 +736,11 @@ export default function AuditPage() {
                       paddingTop: 16,
                       borderTop: "1px solid rgba(0,0,0,.08)"
                     }}>
-                      <a className="btn" href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}`}>
-                        Download PDF Report
+                      <a
+                        className="btn"
+                        href={`/api/audit/pdf?url=${encodeURIComponent(report.url)}${report.focusArea ? `&focusArea=${encodeURIComponent(report.focusArea)}` : ""}${report.competitors?.length ? `&competitors=${encodeURIComponent(JSON.stringify(report.competitors))}` : ""}`}
+                      >
+                        Download Combined PDF
                       </a>
                       <a
                         className="btn alt"
@@ -777,6 +802,25 @@ export default function AuditPage() {
                   )}
                 </div>
               </div>
+
+              {/* Proposal Section */}
+              <ProposalSection
+                executiveSummary={report.executiveSummary}
+                focusArea={report.focusArea}
+                recommendedTier={report.tier}
+                websiteUrl={report.url}
+              />
+
+              {/* Competitive Snapshot (conditional) */}
+              {report.competitorSignals?.length > 0 && (
+                <CompetitiveSnapshot
+                  primarySignals={report.primarySignals}
+                  competitorSignals={report.competitorSignals.map((c: { url?: string; signals: any }) => ({
+                    signals: c.signals || c,
+                    url: c.url,
+                  }))}
+                />
+              )}
 
               {/* Customer-Facing GPTO Output Template */}
               {report.executiveSummary && (
@@ -919,6 +963,13 @@ export default function AuditPage() {
                   <FinalClose report={report} />
                 </div>
               )}
+
+              {/* Compliance Footer - always when report exists */}
+              {report && (
+                <div className="card" style={{ marginTop: 24 }}>
+                  <ComplianceFooter />
+                </div>
+              )}
             </>
           ) : (
             <div className="card">
@@ -979,31 +1030,6 @@ function PerformanceSummaryTable({ report }: { report: any }) {
     return "F";
   };
 
-  // Expected outcomes by package (matching GrowthProgressionTable)
-  const expectedOutcomes: Record<"Bronze" | "Silver" | "Gold", string> = {
-    "Bronze": "B-",
-    "Silver": "B+",
-    "Gold": "A"
-  };
-
-  // Calculate "With Package" grades based on tier - use expected outcomes as target
-  const getWithPackageGrade = (currentGrade: string, dimension: string, tier: "Bronze" | "Silver" | "Gold", currentScore?: number) => {
-    const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
-    const targetGrade = expectedOutcomes[tier];
-    const currentIdx = gradeOrder.indexOf(currentGrade);
-    const targetIdx = gradeOrder.indexOf(targetGrade);
-    
-    if (currentIdx === -1 || targetIdx === -1) return currentGrade;
-
-    // If current grade is already at or above target, return current or target (whichever is better)
-    if (currentIdx >= targetIdx) {
-      return currentGrade; // Already at or above target
-    }
-
-    // Otherwise, return the target grade for that tier
-    return targetGrade;
-  };
-
   // Map dimensions with smarter calculations
   const seoCurrent = calculateCompositeGrade(
     [g.structure || "C", g.technicalReadiness || "C"],
@@ -1038,10 +1064,10 @@ function PerformanceSummaryTable({ report }: { report: any }) {
           "B": "Refined messaging and essential schema markup help AI tools explain your business more accurately. They'll recommend you more confidently.",
           "A": "Refined messaging and essential schema markup ensure AI tools always get your business right. Your visibility across AI platforms improves."
         },
-        "Conversion Clarity": {
+        "Website Clarity": {
           "D": "Refined top-page messaging clarifies who you help and how. Visitors understand if you're right for them before they leave.",
           "C": "Refined messaging makes it clearer who you serve and what problems you solve. Visitors can better self-qualify.",
-          "B": "Refined messaging enhances clarity so more qualified visitors take action. Your conversion flow becomes more effective.",
+          "B": "Refined messaging enhances clarity so more qualified visitors take action. Your site flow becomes more effective.",
           "A": "Refined messaging optimizes your already clear site. Visitors arrive better-informed and more ready to engage."
         },
         "Brand Signal": {
@@ -1064,11 +1090,11 @@ function PerformanceSummaryTable({ report }: { report: any }) {
           "B": "Full-site schema implementation helps AI tools explain your business more accurately. Competitive analysis shows how to stand out in AI recommendations.",
           "A": "Full-site schema implementation ensures AI tools always get your business right. Competitive insights help you maintain leadership in AI discovery."
         },
-        "Conversion Clarity": {
+        "Website Clarity": {
           "D": "Full-site schema implementation and structured content improvements clarify your entire site. Visitors understand your value across all pages.",
           "C": "Full-site schema implementation makes your entire site clearer. Structured content improvements help visitors self-qualify more effectively.",
-          "B": "Full-site schema implementation enhances clarity site-wide. Structured content improvements drive more qualified conversions.",
-          "A": "Full-site schema implementation optimizes your already clear site. Structured content improvements maximize conversion potential."
+          "B": "Full-site schema implementation enhances clarity site-wide. Structured content improvements support clearer visitor engagement.",
+          "A": "Full-site schema implementation optimizes your already clear site. Structured content improvements maximize clarity potential."
         },
         "Brand Signal": {
           "D": "Full-site schema implementation reinforces your brand consistently across all pages. Competitive analysis reveals how to strengthen your brand signals.",
@@ -1090,11 +1116,11 @@ function PerformanceSummaryTable({ report }: { report: any }) {
           "B": "Real-time optimization ensures AI tools always recommend you accurately. Multi-market competitive analysis helps you lead in AI discovery.",
           "A": "Real-time optimization maintains your AI leadership. Advanced competitive intelligence ensures you stay ahead in AI tool recommendations."
         },
-        "Conversion Clarity": {
+        "Website Clarity": {
           "D": "Real-time optimization adapts your site based on visitor behavior. AI-supported guidance improves how visitors understand and engage with your brand.",
-          "C": "Real-time optimization enhances clarity based on actual visitor patterns. AI-supported improvements drive more qualified conversions.",
-          "B": "Real-time optimization fine-tunes your site for maximum conversion. AI-supported insights optimize visitor experience continuously.",
-          "A": "Real-time optimization maintains peak conversion performance. AI-supported insights ensure you stay ahead of visitor expectations."
+          "C": "Real-time optimization enhances clarity based on actual visitor patterns. AI-supported improvements support clearer engagement.",
+          "B": "Real-time optimization fine-tunes your site for maximum clarity. AI-supported insights optimize visitor experience continuously.",
+          "A": "Real-time optimization maintains peak clarity performance. AI-supported insights ensure you stay ahead of visitor expectations."
         },
         "Brand Signal": {
           "D": "Real-time optimization ensures your brand signals adapt to market changes. 10-competitor mapping and AI-supported reputation building strengthen your brand authority.",
@@ -1109,33 +1135,29 @@ function PerformanceSummaryTable({ report }: { report: any }) {
                     current === "C" || current === "B-" ? "C" :
                     current === "B" || current === "B+" ? "B" : "A";
     
-    return tierDetails[tier]?.[dimension]?.[gradeKey] || tierDetails[tier]?.[dimension]?.["C"] || `${tier} package improves this dimension.`;
+    return tierDetails[tier]?.[dimension]?.[gradeKey] || tierDetails[tier]?.[dimension]?.["C"] || `${tier} package strengthens this dimension.`;
   };
 
   const dimensions = [
     {
       name: "AI System Visibility",
       current: seoCurrent,
-      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(seoCurrent, "SEO Strength", tier, s.structure),
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("SEO Strength", seoCurrent, getWithPackageGrade(seoCurrent, "SEO Strength", tier, s.structure), tier)
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("SEO Strength", seoCurrent, seoCurrent, tier)
     },
     {
       name: "AI Tool Understanding",
       current: aiCurrent,
-      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(aiCurrent, "AI Discoverability", tier, s.aiReadiness),
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("AI Discoverability", aiCurrent, getWithPackageGrade(aiCurrent, "AI Discoverability", tier, s.aiReadiness), tier)
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("AI Discoverability", aiCurrent, aiCurrent, tier)
     },
     {
       name: "Website Clarity",
       current: conversionCurrent,
-      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(conversionCurrent, "Conversion Clarity", tier, s.contentDepth),
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Conversion Clarity", conversionCurrent, getWithPackageGrade(conversionCurrent, "Conversion Clarity", tier, s.contentDepth), tier)
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Website Clarity", conversionCurrent, conversionCurrent, tier)
     },
     {
       name: "Brand Recognition",
       current: brandCurrent,
-      getWithPackage: (tier: "Bronze" | "Silver" | "Gold") => getWithPackageGrade(brandCurrent, "Brand Signal", tier, s.overall),
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Brand Signal", brandCurrent, getWithPackageGrade(brandCurrent, "Brand Signal", tier, s.overall), tier)
+      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Brand Signal", brandCurrent, brandCurrent, tier)
     }
   ];
 
@@ -1143,11 +1165,11 @@ function PerformanceSummaryTable({ report }: { report: any }) {
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Current vs. Potential Performance</h3>
+      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Current Performance</h3>
       <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
-        See how your site performs today and how much better it could be with each GPTO package. These scores show the direction of improvement, not exact promises.
+        See how your site performs today. Select a tier to see what GPTO strengthens in each area.
       </p>
-      
+
       {/* Tier selector */}
       <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
         {tiers.map((tier) => (
@@ -1166,35 +1188,27 @@ function PerformanceSummaryTable({ report }: { report: any }) {
               transition: "all 0.2s ease"
             }}
           >
-            With {tier}
+            {tier}
           </button>
         ))}
       </div>
 
       <div className="table-wrapper" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid rgba(0,0,0,.1)" }}>
               <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>Performance Area</th>
               <th style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>Current Status</th>
-              <th style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>With {selectedTier}</th>
-              <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>Impact</th>
+              <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>What {selectedTier} Strengthens</th>
             </tr>
           </thead>
           <tbody>
             {dimensions.map((dim, i) => {
-              const withPackage = dim.getWithPackage(selectedTier);
               const meaning = dim.getMeaning(selectedTier);
               return (
                 <tr key={i} style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
                   <td style={{ padding: "12px", fontWeight: 600 }}>{dim.name}</td>
                   <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>{dim.current}</td>
-                  <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>
-                    {withPackage}
-                    {dim.current !== withPackage && (
-                      <span style={{ marginLeft: 6, fontSize: 12, color: "#666" }}>→</span>
-                    )}
-                  </td>
                   <td style={{ padding: "12px", lineHeight: 1.5, color: "#333" }}>{meaning}</td>
                 </tr>
               );
@@ -1449,7 +1463,7 @@ function FinalClose({ report }: { report: any }) {
             Why This Matters Right Now
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6 }}>
-            Over <strong>40% of search queries</strong> now happen through AI-powered tools like ChatGPT, Perplexity, and Google's AI Overview. 
+            AI-powered tools like ChatGPT, Perplexity, and Google's AI Overview are increasingly used to discover brands and make decisions. 
             These systems are becoming the primary way people discover brands, compare options, and make decisions. 
             <strong> Without GPTO optimization, your site risks being overlooked, misunderstood, or incorrectly summarized</strong> by these critical discovery channels.
           </p>
@@ -1467,7 +1481,7 @@ function FinalClose({ report }: { report: any }) {
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6 }}>
             Your brand is <strong>correctly understood, easily found, and confidently recommended</strong> by AI tools. 
-            Users arrive <strong>better-qualified and more informed</strong>, reducing wasted time and improving conversion rates. 
+            Users arrive <strong>better-qualified and more informed</strong>. 
             Your core messages are <strong>consistently and accurately surfaced</strong> across all AI-driven discovery channels.
           </p>
         </div>
@@ -1487,7 +1501,7 @@ function FinalClose({ report }: { report: any }) {
               </p>
               <div className="xlarge-text" style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6 }}>
                 {deliverables.price}{" "}
-                <span style={{ fontSize: 18, fontWeight: 800 }}>/ mo</span>
+                <span style={{ fontSize: 18, fontWeight: 800 }}>/ 3 months</span>
               </div>
               <p style={{ margin: 0, color: "#333", fontSize: 14 }}>
                 {deliverables.subtitle}
@@ -1683,7 +1697,7 @@ function renderAuditDimension(
   
   const expectedOutcome = currentGrade === projectedGrade
     ? `With GPTO, ${title.toLowerCase()} maintains excellence while optimizing for maximum impact and consistency.`
-    : `With GPTO, ${title.toLowerCase()} improves from ${currentGrade} to ${projectedGrade} through structural improvements that enhance machine readability, consistency, and clarity.`;
+    : `GPTO strengthens ${title.toLowerCase()}. It supports clearer organization and introduces structural clarity.`;
 
   const pricingHref = `/pricing?tier=${encodeURIComponent(tier || "")}&url=${encodeURIComponent(websiteUrl || "")}`;
 

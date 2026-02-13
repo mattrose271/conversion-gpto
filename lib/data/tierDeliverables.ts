@@ -1,9 +1,16 @@
 export type Tier = "Bronze" | "Silver" | "Gold";
 
+export const TIER_PRICING: Record<Tier, number> = {
+  Bronze: 999,
+  Silver: 2499,
+  Gold: 4999,
+};
+
 export interface TierDeliverable {
   tier: Tier;
   title: string;
   price: string;
+  priceNote?: string;
   subtitle: string;
   deliverables: string[];
   calendlyUrl?: string;
@@ -14,6 +21,7 @@ export const tierDeliverables: TierDeliverable[] = [
     tier: "Bronze",
     title: "Foundation",
     price: "$999",
+    priceNote: "Three-month commitment",
     subtitle: "Corrects core issues and establishes your AI-visibility performance baseline.",
     deliverables: [
       "Essential schema markup added to your most important pages.",
@@ -28,6 +36,7 @@ export const tierDeliverables: TierDeliverable[] = [
     tier: "Silver",
     title: "Growth",
     price: "$2,499",
+    priceNote: "Three-month commitment",
     subtitle: "Strengthens your authority and provides competitive insight.",
     deliverables: [
       "Full-site schema implementation (Organization, Service/Product, Local, FAQ).",
@@ -41,6 +50,7 @@ export const tierDeliverables: TierDeliverable[] = [
     tier: "Gold",
     title: "Elite",
     price: "$4,999",
+    priceNote: "Three-month commitment",
     subtitle: "Automates optimization and delivers advanced competitive intelligence.",
     deliverables: [
       "Complete real-time optimization for live search, intent, and behavior signals.",

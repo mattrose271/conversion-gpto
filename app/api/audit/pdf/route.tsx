@@ -14,7 +14,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Query = z.object({
-  url: z.string().min(1)
+  url: z.string().min(1),
+  focusArea: z.string().optional(),
+  competitors: z.string().optional(), // JSON array string
 });
 
 function normalizeInputUrl(input: string) {
@@ -237,44 +239,35 @@ function TableRow({ label, value, last }: { label: string; value: string; last?:
   );
 }
 
-// Expected outcomes by package (matching GrowthProgressionTable)
-const expectedOutcomes: Record<"Bronze" | "Silver" | "Gold", string> = {
-  "Bronze": "B-",
-  "Silver": "B+",
-  "Gold": "A"
-};
-
-function getWithGPTOGrade(currentGrade: string, dimension: string, grades: any, tier: string = "Bronze"): string {
-  const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
-  const targetGrade = expectedOutcomes[tier as "Bronze" | "Silver" | "Gold"] || expectedOutcomes["Bronze"];
-  const currentIdx = gradeOrder.indexOf(currentGrade);
-  const targetIdx = gradeOrder.indexOf(targetGrade);
-  
-  if (currentIdx === -1 || targetIdx === -1) return currentGrade;
-
-  // If current grade is already at or above target, return current or target (whichever is better)
-  if (currentIdx >= targetIdx) {
-    return currentGrade; // Already at or above target
-  }
-
-  // Otherwise, return the target grade for that tier
-  return targetGrade;
-}
-
 export async function GET(req: Request) {
   try {
-    // 1) Read URL from query
+    // 1) Read URL and optional params from query
     const requestUrl = new URL(req.url);
     const urlParam = requestUrl.searchParams.get("url") || "";
+    const focusAreaParam = requestUrl.searchParams.get("focusArea") || "";
+    const competitorsParam = requestUrl.searchParams.get("competitors") || "";
     const { url } = Query.parse({ url: urlParam });
     const normalizedUrl = normalizeInputUrl(url);
 
+    let competitors: string[] = [];
+    try {
+      if (competitorsParam) {
+        const parsed = JSON.parse(competitorsParam);
+        if (Array.isArray(parsed)) competitors = parsed.slice(0, 5);
+      }
+    } catch {}
+
     // 2) Call your existing /api/audit so PDF matches website output exactly
     const origin = requestUrl.origin;
+    const auditBody: Record<string, unknown> = {
+      url: normalizedUrl,
+      focusArea: focusAreaParam || undefined,
+      competitors: competitors.length ? competitors : undefined,
+    };
     const auditRes = await fetch(`${origin}/api/audit`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url: normalizedUrl })
+      body: JSON.stringify(auditBody),
     });
 
     const report = await auditRes.json();
@@ -337,6 +330,9 @@ export async function GET(req: Request) {
     const generatedAt = new Date().toLocaleString();
     const businessInfo = report?.businessInfo || {};
     const executiveSummary = report?.executiveSummary || "";
+    const focusArea = report?.focusArea || "";
+    const primarySignals = report?.primarySignals;
+    const competitorSignals = report?.competitorSignals || [];
 
     // Calculate performance summary dimensions (matching web version logic)
     const calculateCompositeGrade = (gradesList: string[], scoresList: number[], weights: number[] = []) => {
@@ -415,6 +411,14 @@ export async function GET(req: Request) {
             </Text>
           </View>
 
+          {/* Focus Area */}
+          {focusArea && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Focus Area</Text>
+              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>{focusArea}</Text>
+            </View>
+          )}
+
           {/* About Your Business */}
           {businessInfo.businessName && (
             <View style={styles.section}>
@@ -434,26 +438,13 @@ export async function GET(req: Request) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>2. Plain-English Performance Summary</Text>
             <Text style={[styles.muted, { fontSize: 9, marginBottom: 6 }]}>
-              Grades are directional, not performance claims. Showing expected outcome with {recommendedTier} package.
+              Current structural and content signal assessment. GPTO strengthens these dimensions.
             </Text>
             <View style={styles.box}>
-              <TableRow 
-                label="AI System Visibility" 
-                value={`${seoCurrent} to ${getWithGPTOGrade(seoCurrent, "SEO Strength", grades, recommendedTier)}`} 
-              />
-              <TableRow 
-                label="AI Tool Understanding" 
-                value={`${aiCurrent} to ${getWithGPTOGrade(aiCurrent, "AI Discoverability", grades, recommendedTier)}`} 
-              />
-              <TableRow 
-                label="Website Clarity" 
-                value={`${conversionCurrent} to ${getWithGPTOGrade(conversionCurrent, "Conversion Clarity", grades, recommendedTier)}`} 
-              />
-              <TableRow 
-                label="Brand Recognition" 
-                value={`${brandCurrent} to ${getWithGPTOGrade(brandCurrent, "Brand Signal", grades, recommendedTier)}`} 
-                last 
-              />
+              <TableRow label="AI System Visibility" value={seoCurrent} />
+              <TableRow label="AI Tool Understanding" value={aiCurrent} />
+              <TableRow label="Website Clarity" value={conversionCurrent} />
+              <TableRow label="Brand Recognition" value={brandCurrent} last />
             </View>
           </View>
 
@@ -503,9 +494,9 @@ export async function GET(req: Request) {
                 GPTO makes sure AI systems can easily find and understand all your pages. We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site.
               </Text>
               
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>Expected Improvement</Text>
+              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                With GPTO, how well AI systems can find you improves from {seoCurrent} to {getWithGPTOGrade(seoCurrent, "SEO Strength", grades, recommendedTier)} through improvements to how your site is organized that enhance how easily systems can understand your site, consistency, and clarity.
+                GPTO strengthens structural visibility conditions for how well AI systems can find you. It supports clearer organization and reduces ambiguity so systems can better understand your site.
               </Text>
             </View>
           </View>
@@ -539,9 +530,9 @@ export async function GET(req: Request) {
                 GPTO rewrites your website content so AI tools like ChatGPT can clearly understand what you do, who you serve, and how you help. We'll use consistent, clear language throughout your site so AI tools can confidently recommend your business.
               </Text>
               
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>Expected Improvement</Text>
+              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                With GPTO, how well AI tools understand your business improves from {aiCurrent} to {getWithGPTOGrade(aiCurrent, "AI Discoverability", grades, recommendedTier)} through improvements to how your site is organized that enhance how easily systems can understand your site, consistency, and clarity.
+                GPTO strengthens how well AI tools understand your business. It reinforces consistent messaging and introduces structural clarity so AI systems can better recommend your brand.
               </Text>
             </View>
           </View>
@@ -549,7 +540,7 @@ export async function GET(req: Request) {
           {/* Footer */}
           <View style={styles.footer} fixed>
             <Text style={{ fontWeight: 600 }}>Conversion Interactive Agency • GPTO Audit</Text>
-            <Text>{hostSlug(normalizedUrl)}</Text>
+            <Text>{hostSlug(normalizedUrl)} • GPTO Audit System v1.0</Text>
           </View>
         </Page>
 
@@ -586,9 +577,9 @@ export async function GET(req: Request) {
                 GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them. Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want.
               </Text>
               
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>Expected Improvement</Text>
+              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                With GPTO, how clear your website is to visitors improves from {conversionCurrent} to {getWithGPTOGrade(conversionCurrent, "Conversion Clarity", grades, recommendedTier)} through improvements to how your site is organized that enhance how easily systems can understand your site, consistency, and clarity.
+                GPTO strengthens website clarity for visitors. It supports clearer communication of what you offer and reduces ambiguity so visitors can better understand your value.
               </Text>
             </View>
           </View>
@@ -622,9 +613,9 @@ export async function GET(req: Request) {
                 GPTO ensures your brand message comes through consistently everywhere people might find you. Your unique value and what makes you different will be clearly communicated, so people understand why to choose you.
               </Text>
               
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>Expected Improvement</Text>
+              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                With GPTO, how strongly your brand comes through improves from {brandCurrent} to {getWithGPTOGrade(brandCurrent, "Brand Signal", grades, recommendedTier)} through improvements to how your site is organized that enhance how easily systems can understand your site, consistency, and clarity.
+                GPTO strengthens how strongly your brand comes through. It reinforces consistent messaging across discovery channels and introduces structural clarity for your unique value.
               </Text>
             </View>
           </View>
@@ -734,8 +725,7 @@ export async function GET(req: Request) {
             <View style={[styles.box, { marginBottom: 12 }]}>
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Why This Matters Right Now</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                Over <Text style={{ fontWeight: 700 }}>40% of search queries</Text> now happen through AI-powered tools like ChatGPT, Perplexity, and Google's AI Overview. 
-                These systems are becoming the primary way people discover brands, compare options, and make decisions. 
+                AI-powered tools like ChatGPT, Perplexity, and Google's AI Overview are increasingly used to discover brands, compare options, and make decisions. 
                 <Text style={{ fontWeight: 700 }}> Without GPTO optimization, your site risks being overlooked, misunderstood, or incorrectly summarized</Text> by these critical discovery channels.
               </Text>
             </View>
@@ -743,11 +733,55 @@ export async function GET(req: Request) {
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>What Success Looks Like</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
                 Your brand is <Text style={{ fontWeight: 700 }}>correctly understood, easily found, and confidently recommended</Text> by AI tools. 
-                Users arrive <Text style={{ fontWeight: 700 }}>better-qualified and more informed</Text>, reducing wasted time and improving conversion rates. 
+                Users arrive <Text style={{ fontWeight: 700 }}>better-qualified and more informed</Text>. 
                 Your core messages are <Text style={{ fontWeight: 700 }}>consistently and accurately surfaced</Text> across all AI-driven discovery channels.
               </Text>
             </View>
+            <View style={[styles.box, { marginBottom: 12 }]}>
+              <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Important Clarification</Text>
+              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
+                GPTO strengthens structural visibility conditions. It does not generate traffic, leads, or revenue independently.
+              </Text>
+            </View>
           </View>
+
+          {/* Competitive Snapshot (conditional) */}
+          {competitorSignals.length > 0 && primarySignals && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Competitive Signal Snapshot</Text>
+              <Text style={[styles.muted, { fontSize: 9, marginBottom: 8 }]}>
+                Observable structural patterns. This comparison does not assess ranking position, traffic levels, or business performance.
+              </Text>
+              <View style={styles.box}>
+                <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#000", paddingBottom: 6, marginBottom: 6 }}>
+                  <Text style={[styles.scoreLabel, { flex: 1, fontSize: 9 }]}>Site</Text>
+                  <Text style={[styles.scoreLabel, { flex: 1, fontSize: 9 }]}>Service Def.</Text>
+                  <Text style={[styles.scoreLabel, { flex: 1, fontSize: 9 }]}>Schema</Text>
+                  <Text style={[styles.scoreLabel, { flex: 1, fontSize: 9 }]}>FAQ</Text>
+                  <Text style={[styles.scoreLabel, { flex: 1, fontSize: 9 }]}>Messaging</Text>
+                </View>
+                <View style={{ flexDirection: "row", paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,.08)" }}>
+                  <Text style={{ flex: 1, fontSize: 8 }}>Your site</Text>
+                  <Text style={{ flex: 1, fontSize: 8 }}>{primarySignals?.serviceSegmentation || "—"}</Text>
+                  <Text style={{ flex: 1, fontSize: 8 }}>{primarySignals?.schemaCoverage || "—"}</Text>
+                  <Text style={{ flex: 1, fontSize: 8 }}>{primarySignals?.faqCoverage || "—"}</Text>
+                  <Text style={{ flex: 1, fontSize: 8 }}>{primarySignals?.messagingClarity || "—"}</Text>
+                </View>
+                {competitorSignals.slice(0, 5).map((c: any, i: number) => {
+                  const sig = c?.signals || c;
+                  return (
+                    <View key={i} style={{ flexDirection: "row", paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,.08)" }}>
+                      <Text style={{ flex: 1, fontSize: 8 }}>Competitor {i + 1}</Text>
+                      <Text style={{ flex: 1, fontSize: 8 }}>{sig?.serviceSegmentation || "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 8 }}>{sig?.schemaCoverage || "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 8 }}>{sig?.faqCoverage || "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 8 }}>{sig?.messagingClarity || "—"}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {/* Recommended Package */}
           {tier && tier !== "—" && (
@@ -756,8 +790,9 @@ export async function GET(req: Request) {
               <View style={styles.box}>
                 <Text style={styles.boxTitle}>{packageDetails?.tier} — {packageDetails?.title}</Text>
                 <Text style={{ fontSize: 11, fontWeight: 700, color: BRAND_RED, marginTop: 4 }}>
-                  {packageDetails?.price}
+                  {packageDetails?.price} / 3 months
                 </Text>
+                <Text style={{ fontSize: 9, color: "#666", marginTop: 2 }}>Three-month commitment</Text>
                 <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
                   {packageDetails?.subtitle}
                 </Text>
@@ -770,10 +805,17 @@ export async function GET(req: Request) {
             </View>
           )}
 
+          {/* Compliance Footer */}
+          <View style={[styles.section, { marginTop: 16 }]}>
+            <Text style={{ fontSize: 9, color: "#666", lineHeight: 1.5 }}>
+              This assessment reflects observable structural and content signals. It does not measure traffic, rankings, lead quality, conversion rates, or revenue performance. GPTO strengthens visibility conditions and authority signals but does not guarantee placement, traffic, or business outcomes.
+            </Text>
+          </View>
+
           {/* Footer */}
           <View style={styles.footer} fixed>
             <Text style={{ fontWeight: 600 }}>Conversion Interactive Agency • GPTO Audit</Text>
-            <Text>{hostSlug(normalizedUrl)}</Text>
+            <Text>{hostSlug(normalizedUrl)} • GPTO Audit System v1.0</Text>
           </View>
         </Page>
       </Document>

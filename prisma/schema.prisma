@@ -10,18 +10,22 @@ datasource db {
 }
 
 model Audit {
-  id              String   @id @default(uuid())
-  url             String
-  domain          String
-  email           String?
-  tier            String?  @db.VarChar(20)
-  scores          Json
-  grades          Json
-  recommendations Json?
-  signals         Json?
-  scope           Json?
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  url               String
+  domain            String
+  email             String?
+  tier              String?  @db.VarChar(20)
+  focusArea         String?  @map("focus_area")
+  competitors       Json?
+  scores            Json
+  grades            Json
+  recommendations   Json?
+  signals           Json?
+  primarySignals    Json?    @map("primary_signals")
+  competitorSignals Json?    @map("competitor_signals")
+  scope             Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   emailSubmissions EmailSubmission[]
 

@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   url: z.string().min(1),
-  email: z.string().email().optional()
+  email: z.string().email().optional(),
+  focusArea: z.string().optional(),
+  competitors: z.array(z.string()).max(5).optional(),
 });
 
 // ----------------------------
@@ -119,6 +121,32 @@ function extractInternalLinks(html: string, origin: string) {
   return [...links].sort((a, b) => a.localeCompare(b));
 }
 
+function extractSchemaTypes(html: string): string[] {
+  const $ = cheerio.load(html);
+  const types = new Set<string>();
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const raw = $(el).html();
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      for (const item of items) {
+        if (item && typeof item === "object") {
+          const t = item["@type"];
+          if (typeof t === "string") types.add(t);
+          if (Array.isArray(item["@graph"])) {
+            for (const g of item["@graph"]) {
+              const gt = g?.["@type"];
+              if (typeof gt === "string") types.add(gt);
+            }
+          }
+        }
+      }
+    } catch {}
+  });
+  return [...types].sort();
+}
+
 function summarize(html: string) {
   const $ = cheerio.load(html);
   const title = $("title").first().text().trim();
@@ -127,9 +155,11 @@ function summarize(html: string) {
   const h1Count = $("h1").length;
   const h2Count = $("h2").length;
   const hasJsonLd = $('script[type="application/ld+json"]').length > 0;
+  const schemaTypes = extractSchemaTypes(html);
   const text = $("body").text().replace(/\s+/g, " ").trim().slice(0, 20000);
+  const hasFaqLike = /faq|question|answer|Q&A|frequently asked/i.test(text) || $("[itemprop='acceptedAnswer']").length > 0;
 
-  return { title, metaDescription, canonical, h1Count, h2Count, hasJsonLd, text };
+  return { title, metaDescription, canonical, h1Count, h2Count, hasJsonLd, schemaTypes, hasFaqLike, text };
 }
 
 async function crawl(seedUrl: string) {
@@ -197,6 +227,53 @@ async function crawl(seedUrl: string) {
   }
 
   return { pages, scope: { maxPages, scannedPages: pages.length, usedSitemap }, origin };
+}
+
+async function crawlCompetitor(competitorUrl: string, maxPages = 5): Promise<{ pages: any[]; origin: string } | null> {
+  try {
+    const normalized = competitorUrl.startsWith("http") ? competitorUrl : `https://${competitorUrl}`;
+    const seed = new URL(normalized);
+    const origin = seed.origin;
+
+    const sitemapUrls = await getSitemapUrls(origin, maxPages);
+    const queue: string[] = [];
+    const seen = new Set<string>();
+
+    if (sitemapUrls?.length) {
+      for (const u of sitemapUrls.slice(0, maxPages)) {
+        if (!seen.has(u)) {
+          queue.push(u);
+          seen.add(u);
+        }
+      }
+    }
+    if (queue.length === 0) {
+      queue.push(normalized);
+      seen.add(normalized);
+    }
+
+    const pages: any[] = [];
+    const deadline = Date.now() + 10000;
+
+    for (const pageUrl of queue) {
+      if (pages.length >= maxPages || Date.now() > deadline) break;
+      try {
+        const { status, text } = await fetchText(pageUrl, 5000);
+        if (status >= 400) {
+          pages.push({ url: pageUrl, status });
+          continue;
+        }
+        const s = summarize(text);
+        pages.push({ url: pageUrl, status, ...s });
+      } catch {
+        pages.push({ url: pageUrl, status: 0 });
+      }
+    }
+
+    return { pages, origin };
+  } catch {
+    return null;
+  }
 }
 
 // ----------------------------
@@ -489,6 +566,68 @@ function inferBusinessInfo(pages: any[], seedUrl: string, origin: string) {
     primaryAudiences,
     primaryConversions,
     funnelNotes
+  };
+}
+
+// ----------------------------
+// Structural Signals (for competitive snapshot)
+// ----------------------------
+function buildStructuralSignals(
+  pages: any[],
+  seedUrl: string,
+  origin: string,
+  answer: { perDim: any }
+): {
+  serviceSegmentation: "consistent" | "partial" | "inconsistent";
+  schemaTypes: string[];
+  schemaCoverage: "broad" | "partial" | "limited";
+  faqCoverage: "distributed" | "centralized" | "minimal" | "none";
+  authoritySignals: { testimonials: boolean; caseStudies: boolean; press: boolean; certifications: boolean };
+  messagingClarity: "clear" | "mixed" | "unclear";
+} {
+  const ok = pages.filter((p) => p.status > 0 && p.status < 400);
+  const n = ok.length || 1;
+
+  const titleRate = ok.filter((p) => p.title && p.title.length > 2).length / n;
+  const h1Rate = ok.filter((p) => (p.h1Count ?? 0) >= 1).length / n;
+  const consistency = (titleRate + h1Rate) / 2;
+  const serviceSegmentation: "consistent" | "partial" | "inconsistent" =
+    consistency >= 0.7 ? "consistent" : consistency >= 0.4 ? "partial" : "inconsistent";
+
+  const allSchemaTypes = new Set<string>();
+  ok.forEach((p) => (p.schemaTypes || []).forEach((t: string) => allSchemaTypes.add(t)));
+  const schemaTypes = [...allSchemaTypes].sort();
+
+  const jsonLdRate = ok.filter((p) => p.hasJsonLd).length / n;
+  const schemaCoverage: "broad" | "partial" | "limited" =
+    jsonLdRate >= 0.5 ? "broad" : jsonLdRate >= 0.2 ? "partial" : "limited";
+
+  const faqPages = ok.filter((p) => p.hasFaqLike).length;
+  const faqCoverage: "distributed" | "centralized" | "minimal" | "none" =
+    faqPages >= n * 0.3 ? "distributed" : faqPages >= 1 ? "centralized" : faqPages > 0 ? "minimal" : "none";
+
+  const allText = ok.map((p) => `${p.title ?? ""} ${p.text ?? ""}`).join(" ").toLowerCase();
+  const authoritySignals = {
+    testimonials: hasAny(allText, ["testimonial", "review", "customer", "client"]),
+    caseStudies: hasAny(allText, ["case study", "case studies"]),
+    press: hasAny(allText, ["press", "media", "featured", "as seen in"]),
+    certifications: hasAny(allText, ["certified", "certification", "compliance", "soc 2", "gdpr"]),
+  };
+
+  const dims = answer.perDim;
+  const dimRate = (d: any) => d.count / (d.total || 1);
+  const rates = [dimRate(dims.what), dimRate(dims.who), dimRate(dims.how), dimRate(dims.trust)];
+  const avgRate = rates.reduce((a, b) => a + b, 0) / 4;
+  const messagingClarity: "clear" | "mixed" | "unclear" =
+    avgRate >= 0.35 ? "clear" : avgRate <= 0.2 ? "unclear" : "mixed";
+
+  return {
+    serviceSegmentation,
+    schemaTypes,
+    schemaCoverage,
+    faqCoverage,
+    authoritySignals,
+    messagingClarity,
   };
 }
 
@@ -816,6 +955,9 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
   // Generate executive summary
   const executiveSummary = generateExecutiveSummary(grades, scores, businessInfo, explanations);
 
+  // Build structural signals for competitive snapshot
+  const primarySignals = buildStructuralSignals(pages, seedUrl, origin, answer);
+
   return {
     scores,
     grades,
@@ -825,7 +967,8 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
     recommendations,
     signals,
     businessInfo,
-    executiveSummary
+    executiveSummary,
+    primarySignals,
   };
 }
 
@@ -842,13 +985,33 @@ function getCacheMap(): Map<string, CacheEntry> {
   return g.__gptoAuditCache as Map<string, CacheEntry>;
 }
 
+function normalizeCompetitorUrls(urls: string[]): string[] {
+  const result: string[] = [];
+  for (const u of urls.slice(0, 5)) {
+    const raw = (u || "").trim();
+    if (!raw) continue;
+    try {
+      const normalized = raw.startsWith("http") ? raw : `https://${raw}`;
+      new URL(normalized);
+      if (!result.some((r) => r.toLowerCase() === normalized.toLowerCase())) {
+        result.push(normalized);
+      }
+    } catch {
+      // Invalid URL, ignore
+    }
+  }
+  return result;
+}
+
 export async function POST(req: Request) {
   try {
     const parsed = Body.parse(await req.json());
     const url = normalizeInputUrl(parsed.url);
+    const focusArea = parsed.focusArea?.trim() || null;
+    const competitors = normalizeCompetitorUrls(parsed.competitors || []);
 
     const seed = new URL(url);
-    const cacheKey = seed.origin; // cache per domain (most stable + what users expect)
+    const cacheKey = seed.origin + (competitors.length ? `:${competitors.join(",")}` : "");
     const cache = getCacheMap();
 
     const cached = cache.get(cacheKey);
@@ -862,13 +1025,36 @@ export async function POST(req: Request) {
     const scored = score(pages, url, origin, scope.usedSitemap);
     const durationMs = Date.now() - started;
 
+    let competitorSignals: Array<{ url: string; signals: typeof scored.primarySignals }> = [];
+    for (const compUrl of competitors) {
+      try {
+        const result = await crawlCompetitor(compUrl);
+        if (result && result.pages.length > 0) {
+          const compAnswer = computeAnswerability(
+            result.pages.filter((p) => p.status > 0 && p.status < 400),
+            compUrl,
+            result.origin
+          );
+          const signals = buildStructuralSignals(result.pages, compUrl, result.origin, compAnswer);
+          competitorSignals.push({ url: compUrl, signals });
+        }
+      } catch (err: any) {
+        console.warn("Competitor scan failed for", compUrl, err?.message);
+      }
+    }
+
     const payload = {
       url,
       scope: { ...scope, durationMs },
-      ...scored
+      ...scored,
+      focusArea,
+      competitors: competitors.length ? competitors : undefined,
+      competitorSignals: competitorSignals.length ? competitorSignals : undefined,
     };
 
     cache.set(cacheKey, { ts: Date.now(), payload });
+
+    console.log("Audit created", { url, tier: scored.tier, competitorCount: competitorSignals.length });
 
     // Save audit to database
     let auditId: string | null = null;
@@ -879,23 +1065,25 @@ export async function POST(req: Request) {
           domain: seed.hostname,
           email: parsed.email || null,
           tier: scored.tier || null,
+          focusArea,
+          competitors: competitors.length ? competitors : null,
           scores: scored.scores,
           grades: scored.grades,
           recommendations: scored.recommendations || null,
           signals: scored.signals || null,
-          scope: payload.scope
-        }
+          primarySignals: scored.primarySignals || null,
+          competitorSignals: competitorSignals.length ? competitorSignals.map((c) => c.signals) : null,
+          scope: payload.scope,
+        },
       });
       auditId = audit.id;
     } catch (dbError: any) {
-      // Log error but don't fail the request
       console.error("Failed to save audit to database:", dbError);
     }
 
-    // Include audit ID in response for client-side linking
     const responsePayload = {
       ...payload,
-      auditId
+      auditId,
     };
 
     return NextResponse.json(responsePayload);

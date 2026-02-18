@@ -97,10 +97,10 @@ export function ProposalSection({
             </p>
             <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6 }}>
               {deliverables.price}{" "}
-              <span style={{ fontSize: 18, fontWeight: 800 }}>/ 3 months</span>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>/ month</span>
             </div>
             <p style={{ margin: 0, color: "#666", fontSize: 13 }}>
-              Three-month commitment. No dynamic pricing.
+              Per month pricing. Minimum 3-month subscription. No dynamic pricing.
             </p>
             <p style={{ margin: "8px 0 0", color: "#333", fontSize: 14 }}>
               {deliverables.subtitle}

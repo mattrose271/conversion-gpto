@@ -132,7 +132,7 @@ export default function HomePage() {
     <p className="muted" style={{ maxWidth: "100%", marginTop: 0 }}>
       Choose the tier that fits your goals.
       <br />
-      <strong>3 month commitment</strong> applies to all tiers.
+      <strong>Prices are per month with a minimum 3-month subscription.</strong>
     </p>
 
     {/* NO recommended banner on homepage */}

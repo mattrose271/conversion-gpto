@@ -39,10 +39,13 @@ export default function TierDeliverables({ tier, websiteUrl = "" }: TierDelivera
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6 }}>
           {deliverables.price}{" "}
-          <span style={{ fontSize: 18, fontWeight: 800 }}>/ 3 months</span>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>/ month</span>
         </div>
         <div className="muted" style={{ marginTop: 8 }}>
           {deliverables.subtitle}
+        </div>
+        <div className="muted" style={{ marginTop: 4, fontSize: 13 }}>
+          Per month pricing. Minimum 3-month subscription.
         </div>
       </div>
 

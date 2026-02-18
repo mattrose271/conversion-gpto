@@ -790,9 +790,11 @@ export async function GET(req: Request) {
               <View style={styles.box}>
                 <Text style={styles.boxTitle}>{packageDetails?.tier} — {packageDetails?.title}</Text>
                 <Text style={{ fontSize: 11, fontWeight: 700, color: BRAND_RED, marginTop: 4 }}>
-                  {packageDetails?.price} / 3 months
+                  {packageDetails?.price} / month
                 </Text>
-                <Text style={{ fontSize: 9, color: "#666", marginTop: 2 }}>Three-month commitment</Text>
+                <Text style={{ fontSize: 9, color: "#666", marginTop: 2 }}>
+                  Per month pricing. Minimum 3-month subscription.
+                </Text>
                 <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
                   {packageDetails?.subtitle}
                 </Text>

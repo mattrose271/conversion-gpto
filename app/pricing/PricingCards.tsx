@@ -277,7 +277,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
                 <div className="planTier">{p.tier}</div>
 
                 <div className="planPrice">
-                  {p.price} <span style={{ fontSize: 18, fontWeight: 800 }}>/ 3 months</span>
+                  {p.price} <span style={{ fontSize: 18, fontWeight: 800 }}>/ month</span>
                 </div>
 
                 <div className="muted planSub">{p.sub}</div>
@@ -300,7 +300,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
                   </a>
 
                   <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
-                    3 month commitment
+                    Minimum 3-month subscription
                   </div>
                 </div>
               </div>

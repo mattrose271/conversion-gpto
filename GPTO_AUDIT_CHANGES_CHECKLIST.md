@@ -89,7 +89,7 @@ AFTER:   URL + Email → [Modal: Focus + Competitors] → Audit → Combined PDF
 | | Before | After |
 |:---|:---|:---|
 | **Tier pricing** | Variable | Locked: Bronze $999 · Silver $2,499 · Gold $4,999 |
-| **Commitment** | Unclear | Three-month commitment (explicit) |
+| **Commitment** | Unclear | Per month pricing with a minimum 3-month subscription (explicit) |
 | **Dynamic pricing** | — | No |
 
 ---

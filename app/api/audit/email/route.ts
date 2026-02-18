@@ -104,7 +104,10 @@ function generateWelcomeEmailHTML(
                 </h3>
                 <div style="margin: 12px 0;">
                   <div style="font-size: 28px; font-weight: 900; line-height: 1; margin-bottom: 4px; color: #111111;">
-                    ${deliverable.price} <span style="font-size: 16px; font-weight: 800;">/ 3 months</span>
+                    ${deliverable.price} <span style="font-size: 16px; font-weight: 800;">/ month</span>
+                  </div>
+                  <div style="margin-top: 6px; color: #666; font-size: 13px;">
+                    Per month pricing. Minimum 3-month subscription.
                   </div>
                   <div style="margin-top: 6px; color: #666; font-size: 14px;">
                     ${deliverable.subtitle}
@@ -198,7 +201,7 @@ function generateWelcomeEmailText(
   text += `Our Service Tiers\n\n`;
   tierDeliverables.forEach((deliverable) => {
     text += `${deliverable.tier} Tier - ${deliverable.title}\n`;
-    text += `${deliverable.price} / 3 months\n`;
+    text += `${deliverable.price} / month (minimum 3-month subscription)\n`;
     text += `${deliverable.subtitle}\n\n`;
     deliverable.deliverables.forEach((item) => {
       text += `• ${item}\n`;

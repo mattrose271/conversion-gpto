@@ -2,6 +2,7 @@
 
 import { getTierDeliverables } from "@/lib/data/tierDeliverables";
 import { ComplianceFooter } from "./ComplianceFooter";
+import CheckoutStartButton from "./CheckoutStartButton";
 
 interface ProposalSectionProps {
   executiveSummary?: string | null;
@@ -166,6 +167,19 @@ export function ProposalSection({
             >
               View {deliverables.tier} Package Details
             </a>
+            <CheckoutStartButton
+              tier={deliverables.tier}
+              website={websiteUrl}
+              label="Get Started"
+              className="btn"
+              style={{
+                display: "inline-block",
+                fontSize: 16,
+                padding: "14px 28px",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            />
             {calendlyUrl && (
               <a
                 className="btn alt"

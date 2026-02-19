@@ -1,6 +1,7 @@
 "use client";
 
 import { getTierDeliverables, type Tier } from "@/lib/data/tierDeliverables";
+import CheckoutStartButton from "./CheckoutStartButton";
 
 interface TierDeliverablesProps {
   tier: Tier | string | null | undefined;
@@ -59,10 +60,17 @@ export default function TierDeliverables({ tier, websiteUrl = "" }: TierDelivera
         ))}
       </ul>
 
-      {calendlyUrl && (
-        <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
+        <CheckoutStartButton
+          tier={deliverables.tier}
+          website={websiteUrl}
+          label="Get Started"
+          className="btn"
+          style={{ width: "100%", textAlign: "center", display: "block" }}
+        />
+        {calendlyUrl && (
           <a
-            className="btn"
+            className="btn alt"
             href={buildCalendlyUrl()}
             target="_blank"
             rel="noopener noreferrer"
@@ -70,8 +78,8 @@ export default function TierDeliverables({ tier, websiteUrl = "" }: TierDelivera
           >
             Connect with Us
           </a>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

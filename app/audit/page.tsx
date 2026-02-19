@@ -7,6 +7,7 @@ import AuditPrepModal, { type AuditPrepData } from "../components/AuditPrepModal
 import { ProposalSection } from "../components/ProposalSection";
 import { CompetitiveSnapshot } from "../components/CompetitiveSnapshot";
 import { ComplianceFooter } from "../components/ComplianceFooter";
+import CheckoutStartButton from "../components/CheckoutStartButton";
 
 type Report = any;
 
@@ -1544,6 +1545,19 @@ function FinalClose({ report }: { report: any }) {
               >
                 View {deliverables.tier} Package Details →
               </a>
+              <CheckoutStartButton
+                tier={deliverables.tier}
+                website={report?.url}
+                label="Get Started"
+                className="btn"
+                style={{
+                  display: "inline-block",
+                  fontSize: 16,
+                  padding: "14px 28px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              />
               {calendlyUrl && (
                 <a
                   className="btn alt"

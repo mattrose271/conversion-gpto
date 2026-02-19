@@ -1,13 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PricingCards from "./pricing/PricingCards";
 import EmailModal from "./components/EmailModal";
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [websiteFromUrl, setWebsiteFromUrl] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWebsiteFromUrl(new URLSearchParams(window.location.search).get("url") || "");
+    }
+  }, []);
 
   function handleAuditClick(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
@@ -135,8 +142,8 @@ export default function HomePage() {
       <strong>Prices are per month with a minimum 3-month subscription.</strong>
     </p>
 
-    {/* NO recommended banner on homepage */}
-    <PricingCards allowHighlight={false} />
+    {/* NO recommended banner on homepage — Get Started opens checkout modal */}
+    <PricingCards allowHighlight={false} website={websiteFromUrl} />
  
   </div>
 </section>

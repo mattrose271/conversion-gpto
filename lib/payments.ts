@@ -8,6 +8,17 @@ export const PAYMENT_TIER_TITLES: Record<PaymentTier, string> = {
   Gold: "Elite",
 };
 
+export function normalizePaymentTier(value: string | null | undefined): PaymentTier | null {
+  const normalized = (value || "").trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (["bronze", "foundation", "starter"].includes(normalized)) return "Bronze";
+  if (["silver", "growth"].includes(normalized)) return "Silver";
+  if (["gold", "elite", "pro", "enterprise"].includes(normalized)) return "Gold";
+
+  return null;
+}
+
 /**
  * Monthly prices in cents — sourced from package details (PricingCards).
  * Used for Stripe Checkout when no STRIPE_PRICE_* env vars are set.

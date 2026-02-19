@@ -143,6 +143,7 @@ export async function POST(req: Request) {
       line_items: [{ price_data: priceData, quantity: 1 }],
       customer_email: input.email,
       client_reference_id: lead.id,
+      locale: "en",
       metadata: {
         leadId: lead.id,
         tier: input.tier,

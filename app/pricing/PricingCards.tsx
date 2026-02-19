@@ -294,20 +294,15 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
 
                 <div style={{ marginTop: "auto", paddingTop: 16 }}>
                   <button
-                    className="btn"
                     type="button"
+                    className="btn"
                     onClick={() => openCheckoutModal(p.tier)}
                     style={{ width: "100%", textAlign: "center", display: "block", border: "none", cursor: "pointer" }}
                   >
                     Get Started
                   </button>
-
                   <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
                     Minimum 3-month subscription
-                  </div>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 8, textAlign: "center" }}>
-                    Prefer to talk first?{" "}
-                    <a href={`/contact?tier=${encodeURIComponent(p.tier)}&url=${encodeURIComponent(website)}`}>Contact our team</a>
                   </div>
                 </div>
               </div>
@@ -327,6 +322,11 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           />
         ))}
       </div>
+
+      <p className="muted" style={{ fontSize: 12, marginTop: 16, textAlign: "center" }}>
+        Prefer to talk first?{" "}
+        <a href={`/contact${website ? `?url=${encodeURIComponent(website)}` : ""}`}>Contact our team</a>
+      </p>
 
       <CheckoutLeadModal
         isOpen={isCheckoutModalOpen}

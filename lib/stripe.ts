@@ -5,21 +5,18 @@ let cachedKey: string | null = null;
 
 /**
  * Returns the Stripe secret key.
- * - STRIPE_USE_SANDBOX=true: always use STRIPE_SECRET_KEY (sandbox)
- * - Production (NEXT_PUBLIC_ENV=production): STRIPE_LIVE_SECRET_KEY if set, else STRIPE_SECRET_KEY
- * - Otherwise: STRIPE_SECRET_KEY (sandbox)
+ * - STRIPE_USE_LIVE=true: use STRIPE_LIVE_SECRET_KEY (real payments)
+ * - Otherwise: always use STRIPE_SECRET_KEY (sandbox) — default for dev and production until you opt in
  */
 function getStripeSecretKey(): string {
-  const useSandbox = process.env.STRIPE_USE_SANDBOX === "true";
+  const useLive = process.env.STRIPE_USE_LIVE === "true";
   const testKey = process.env.STRIPE_SECRET_KEY;
   const liveKey = process.env.STRIPE_LIVE_SECRET_KEY;
-  const isProduction = process.env.NEXT_PUBLIC_ENV === "production";
 
-  if (useSandbox) {
-    if (testKey) return testKey;
-    throw new Error("STRIPE_USE_SANDBOX is true but STRIPE_SECRET_KEY is not set.");
+  if (useLive) {
+    if (liveKey) return liveKey;
+    throw new Error("STRIPE_USE_LIVE is true but STRIPE_LIVE_SECRET_KEY is not set.");
   }
-  if (isProduction && liveKey) return liveKey;
   if (testKey) return testKey;
   throw new Error(
     "Stripe is not configured. Set STRIPE_SECRET_KEY in .env (sandbox key is enough to start)."

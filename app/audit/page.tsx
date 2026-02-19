@@ -875,7 +875,7 @@ export default function AuditPage() {
                   <div style={{ marginTop: 20 }}>
                     <h3 style={{ marginBottom: 12, color: "var(--brand-red)" }}>Four Key Areas We Analyzed</h3>
                     <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
-                      We looked at four important areas that determine how well AI tools and AI systems can find, understand, and recommend your business.
+                      We looked at four important areas that determine how well AI tools and AI systems can find, understand, and recommend your business. These match the scorecard above.
                     </p>
                     <div
                       ref={sliderRef}
@@ -885,7 +885,8 @@ export default function AuditPage() {
                     >
                       <div className="auditSlide" data-audit-slide="1">
                         {renderAuditDimension(
-                          "How Well AI Systems Can Find You",
+                          "Technical",
+                          "technicalReadiness",
                           report.explanations?.perCategory?.technicalReadiness,
                           report.explanations?.perCategory?.structure,
                           report.grades,
@@ -895,7 +896,8 @@ export default function AuditPage() {
                       </div>
                       <div className="auditSlide" data-audit-slide="1">
                         {renderAuditDimension(
-                          "How Well AI Tools Understand Your Business",
+                          "AI Clarity",
+                          "aiReadiness",
                           report.explanations?.perCategory?.aiReadiness || report.explanations?.perCategory?.aiClarity,
                           null,
                           report.grades,
@@ -905,9 +907,10 @@ export default function AuditPage() {
                       </div>
                       <div className="auditSlide" data-audit-slide="1">
                         {renderAuditDimension(
-                          "How Clear Your Website Is to Visitors",
-                          report.explanations?.perCategory?.contentDepth,
+                          "Structure",
+                          "structure",
                           report.explanations?.perCategory?.structure,
+                          null,
                           report.grades,
                           report.tier,
                           report.url
@@ -915,8 +918,9 @@ export default function AuditPage() {
                       </div>
                       <div className="auditSlide" data-audit-slide="1">
                         {renderAuditDimension(
-                          "How Strongly Your Brand Comes Through",
-                          report.explanations?.perCategory?.aiReadiness || report.explanations?.perCategory?.aiClarity,
+                          "Content Depth",
+                          "contentDepth",
+                          report.explanations?.perCategory?.contentDepth,
                           null,
                           report.grades,
                           report.tier,
@@ -1571,51 +1575,19 @@ function FinalClose({ report }: { report: any }) {
   );
 }
 
-// New renderAuditDimension function matching template format
+// Renders a dimension card with score and description. Uses exact scorecard grade (no composite).
 function renderAuditDimension(
   title: string,
+  gradeKey: string,
   primaryBlock: any,
   secondaryBlock: any | null,
   grades: any,
   tier: string,
   websiteUrl: string
 ) {
-  // Smarter grade calculation using composite logic
-  const calculateCompositeGrade = (grade1: string, grade2?: string) => {
-    const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
-    const gradeValues: Record<string, number> = {
-      "F": 0, "D": 1, "C": 2, "B-": 2.5, "B": 3, "B+": 3.5, "A-": 4, "A": 4.5, "A+": 5
-    };
-    
-    const val1 = gradeValues[grade1] || 2;
-    if (!grade2) return grade1;
-    const val2 = gradeValues[grade2] || 2;
-    const avg = (val1 + val2) / 2;
-    
-    if (avg >= 4.5) return "A";
-    if (avg >= 3.5) return "B+";
-    if (avg >= 3) return "B";
-    if (avg >= 2.5) return "B-";
-    if (avg >= 2) return "C";
-    if (avg >= 1) return "D";
-    return "F";
-  };
-
-  // Determine current grade based on dimension (smarter)
-  let currentGrade = "C";
-  if (title.includes("AI Systems Can Find")) {
-    const techGrade = grades?.technicalReadiness || "C";
-    const structGrade = grades?.structure || "C";
-    currentGrade = calculateCompositeGrade(techGrade, structGrade);
-  } else if (title.includes("AI Tools Understand")) {
-    currentGrade = grades?.aiReadiness || "C";
-  } else if (title.includes("Clear Your Website")) {
-    const contentGrade = grades?.contentDepth || "C";
-    const structGrade = grades?.structure || "C";
-    currentGrade = calculateCompositeGrade(contentGrade, structGrade);
-  } else if (title.includes("Brand Comes Through")) {
-    currentGrade = grades?.overall || grades?.aiReadiness || "B-";
-  }
+  // Use exact grade from scorecard (same as Scorecard table)
+  const resolvedGradeKey = gradeKey === "aiReadiness" && grades?.aiClarity !== undefined ? "aiClarity" : gradeKey;
+  const currentGrade = grades?.[resolvedGradeKey] ?? "C";
 
   // Combine strengths and gaps from blocks (smarter filtering)
   const allStrengths = [
@@ -1652,44 +1624,35 @@ function renderAuditDimension(
         ? ["There may be some areas we couldn't fully review — GPTO will help address both what we see and what might be hidden."]
         : ["There are likely several areas that need improvement — GPTO will help fix both visible issues and underlying problems."];
 
-  // What GPTO Changes (simplified, plain English)
+  // What GPTO Changes (dimension-specific, plain English)
   const gptoChanges: string[] = [];
   const isLowGrade = currentGrade === "D" || currentGrade === "F" || currentGrade === "C";
   const isHighGrade = currentGrade === "A" || currentGrade === "A+" || currentGrade === "B+";
-  
-  if (title.includes("AI Systems Can Find")) {
-    if (isLowGrade) {
-      gptoChanges.push("GPTO makes sure AI systems can easily find and understand all your pages.");
-      gptoChanges.push("We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site.");
-    } else {
-      gptoChanges.push("GPTO makes your website even easier for AI systems to find and understand.");
-      gptoChanges.push("We'll improve how your website information is organized so AI systems can better list and recommend your site.");
-    }
-  } else if (title.includes("AI Tools Understand")) {
-    if (isLowGrade) {
-      gptoChanges.push("GPTO rewrites your website content so AI tools like ChatGPT can clearly understand what you do, who you serve, and how you help.");
-      gptoChanges.push("We'll use consistent, clear language throughout your site so AI tools can confidently recommend your business.");
-    } else {
-      gptoChanges.push("GPTO improves how AI tools understand and describe your business.");
-      gptoChanges.push("We'll refine your website language so AI tools can more accurately recommend your business to people searching for what you offer.");
-    }
-  } else if (title.includes("Clear Your Website")) {
-    if (isLowGrade) {
-      gptoChanges.push("GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them.");
-      gptoChanges.push("Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want.");
-    } else {
-      gptoChanges.push("GPTO makes your website even clearer and more helpful for visitors.");
-      gptoChanges.push("Visitors will arrive better-informed, leading to more qualified leads and better results.");
-    }
-  } else if (title.includes("Brand Comes Through")) {
-    if (isLowGrade) {
-      gptoChanges.push("GPTO ensures your brand message comes through consistently everywhere people might find you.");
-      gptoChanges.push("Your unique value and what makes you different will be clearly communicated, so people understand why to choose you.");
-    } else {
-      gptoChanges.push("GPTO makes sure your brand message is consistently and clearly communicated everywhere.");
-      gptoChanges.push("Your unique value will be even more clearly communicated, helping people understand why to choose you.");
-    }
-  }
+
+  const dimHelp: Record<string, { low: [string, string]; high: [string, string] }> = {
+    Technical: {
+      low: ["GPTO makes sure AI systems can easily find and understand all your pages.", "We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site."],
+      high: ["GPTO makes your website even easier for AI systems to find and understand.", "We'll improve how your website information is organized so AI systems can better list and recommend your site."],
+    },
+    "AI Clarity": {
+      low: ["GPTO rewrites your website content so AI tools like ChatGPT can clearly understand what you do, who you serve, and how you help.", "We'll use consistent, clear language throughout your site so AI tools can confidently recommend your business."],
+      high: ["GPTO improves how AI tools understand and describe your business.", "We'll refine your website language so AI tools can more accurately recommend your business to people searching for what you offer."],
+    },
+    Structure: {
+      low: ["GPTO aligns your page titles, headings, and descriptions so both visitors and AI systems can quickly understand your content.", "Clear hierarchy and structure help AI tools extract and recommend your pages accurately."],
+      high: ["GPTO fine-tunes your structure for maximum clarity and AI extractability.", "Your pages will be even easier for both visitors and AI systems to navigate."],
+    },
+    "Content Depth": {
+      low: ["GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them.", "Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want."],
+      high: ["GPTO makes your website even clearer and more helpful for visitors.", "Visitors will arrive better-informed, leading to more qualified leads and better results."],
+    },
+    Overall: {
+      low: ["GPTO ensures your brand message comes through consistently everywhere people might find you.", "Your unique value and what makes you different will be clearly communicated, so people understand why to choose you."],
+      high: ["GPTO makes sure your brand message is consistently and clearly communicated everywhere.", "Your unique value will be even more clearly communicated, helping people understand why to choose you."],
+    },
+  };
+  const help = dimHelp[title] || dimHelp.Overall;
+  gptoChanges.push(...(isLowGrade ? help.low : help.high));
 
   // Expected Directional Outcome (smarter projection)
   const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];

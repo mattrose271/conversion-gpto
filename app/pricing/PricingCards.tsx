@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { PaymentTier } from "@/lib/payments";
+import CheckoutLeadModal from "./CheckoutLeadModal";
 
-type Tier = "Bronze" | "Silver" | "Gold";
+type Tier = PaymentTier;
 
 type Props = {
   /** If false, the "Recommended" badge is never shown (use this on homepage). */
@@ -14,6 +16,8 @@ type Props = {
 export default function PricingCards({ allowHighlight = true, website = "" }: Props) {
   const [highlightTier, setHighlightTier] = useState<Tier | "">("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [checkoutTier, setCheckoutTier] = useState<PaymentTier | null>(null);
   const sliderRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -85,11 +89,9 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
     ];
   }, []);
 
-  function getStartedHref(tier: string) {
-    const qs = new URLSearchParams();
-    if (tier) qs.set("tier", tier);
-    if (website) qs.set("url", website);
-    return `/contact?${qs.toString()}`;
+  function openCheckoutModal(tier: PaymentTier) {
+    setCheckoutTier(tier);
+    setIsCheckoutModalOpen(true);
   }
 
   function handleScroll() {
@@ -291,16 +293,21 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
                 </ul>
 
                 <div style={{ marginTop: "auto", paddingTop: 16 }}>
-                  <a
+                  <button
                     className="btn"
-                    href={getStartedHref(p.tier)}
-                    style={{ width: "100%", textAlign: "center", display: "block" }}
+                    type="button"
+                    onClick={() => openCheckoutModal(p.tier)}
+                    style={{ width: "100%", textAlign: "center", display: "block", border: "none", cursor: "pointer" }}
                   >
                     Get Started
-                  </a>
+                  </button>
 
                   <div className="muted" style={{ fontSize: 12, marginTop: 10, textAlign: "center" }}>
                     Minimum 3-month subscription
+                  </div>
+                  <div className="muted" style={{ fontSize: 12, marginTop: 8, textAlign: "center" }}>
+                    Prefer to talk first?{" "}
+                    <a href={`/contact?tier=${encodeURIComponent(p.tier)}&url=${encodeURIComponent(website)}`}>Contact our team</a>
                   </div>
                 </div>
               </div>
@@ -320,6 +327,13 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
           />
         ))}
       </div>
+
+      <CheckoutLeadModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        tier={checkoutTier}
+        website={website}
+      />
     </div>
   );
 }

@@ -28,6 +28,7 @@ model Audit {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   emailSubmissions EmailSubmission[]
+  paymentLeads     PaymentLead[]
 
   @@index([domain])
   @@index([createdAt(sort: Desc)])
@@ -61,4 +62,51 @@ model TierDeliverable {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("tier_deliverables")
+}
+
+model PaymentLead {
+  id                     String    @id @default(uuid())
+  tier                   String    @db.VarChar(20)
+  name                   String
+  businessName           String    @map("business_name")
+  website                String
+  email                  String
+  contactNumber          String?   @map("contact_number")
+  industry               String?
+  message                String?
+  minimumTermAccepted    Boolean   @default(false) @map("minimum_term_accepted")
+  minimumTermAcceptedAt  DateTime? @map("minimum_term_accepted_at")
+  auditId                String?   @map("audit_id")
+  source                 String    @default("pricing")
+  stripeCustomerId       String?   @map("stripe_customer_id")
+  stripeCheckoutSessionId String?  @unique @map("stripe_checkout_session_id")
+  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  stripePriceId          String?   @map("stripe_price_id")
+  checkoutStatus         String?   @map("checkout_status")
+  subscriptionStatus     String?   @map("subscription_status")
+  lastInvoiceStatus      String?   @map("last_invoice_status")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  audit Audit? @relation(fields: [auditId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([tier])
+  @@index([auditId])
+  @@index([createdAt(sort: Desc)])
+  @@index([stripeCustomerId])
+  @@map("payment_leads")
+}
+
+model StripeWebhookEvent {
+  id            String   @id @default(uuid())
+  stripeEventId String   @unique @map("stripe_event_id")
+  eventType     String   @map("event_type")
+  processedAt   DateTime @default(now()) @map("processed_at")
+  payload       Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([processedAt(sort: Desc)])
+  @@map("stripe_webhook_events")
 }

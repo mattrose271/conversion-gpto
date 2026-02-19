@@ -334,54 +334,16 @@ export async function GET(req: Request) {
     const primarySignals = report?.primarySignals;
     const competitorSignals = report?.competitorSignals || [];
 
-    // Calculate performance summary dimensions (matching web version logic)
-    const calculateCompositeGrade = (gradesList: string[], scoresList: number[], weights: number[] = []) => {
-      const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
-      const gradeValues: Record<string, number> = {
-        "F": 0, "D": 1, "C": 2, "B-": 2.5, "B": 3, "B+": 3.5, "A-": 4, "A": 4.5, "A+": 5
-      };
-      
-      // Use scores if available for more precision
-      if (scoresList.length > 0 && scoresList.every(sc => typeof sc === "number")) {
-        const avgScore = scoresList.reduce((a, b, i) => a + (b * (weights[i] || 1)), 0) / 
-                        scoresList.reduce((a, _, i) => a + (weights[i] || 1), 0);
-        if (avgScore >= 90) return "A";
-        if (avgScore >= 80) return "B";
-        if (avgScore >= 70) return "C";
-        if (avgScore >= 60) return "D";
-        return "F";
-      }
-      
-      // Fall back to grade averaging
-      const validGrades = gradesList.filter(gr => gradeOrder.includes(gr));
-      if (validGrades.length === 0) return "C";
-      
-      const avgValue = validGrades.reduce((sum, gr) => sum + (gradeValues[gr] || 2), 0) / validGrades.length;
-      if (avgValue >= 4.5) return "A";
-      if (avgValue >= 3.5) return "B+";
-      if (avgValue >= 3) return "B";
-      if (avgValue >= 2.5) return "B-";
-      if (avgValue >= 2) return "C";
-      if (avgValue >= 1) return "D";
-      return "F";
-    };
+    // Use exact scorecard grades (same as website scorecard and slides)
+    const technicalCurrent: string = grades.technicalReadiness || "C";
+    const aiCurrent: string = grades.aiReadiness || grades.aiClarity || "C";
+    const structureCurrent: string = grades.structure || "C";
+    const contentDepthCurrent: string = grades.contentDepth || "C";
 
-    const seoCurrent: string = calculateCompositeGrade(
-      [grades.structure || "C", grades.technicalReadiness || "C"],
-      [scores.structure || 0, scores.technicalReadiness || 0],
-      [0.5, 0.5]
-    );
-    const aiCurrent: string = grades.aiReadiness || "C";
-    const conversionCurrent: string = calculateCompositeGrade(
-      [grades.contentDepth || "C", grades.structure || "C"],
-      [scores.contentDepth || 0, scores.structure || 0],
-      [0.6, 0.4]
-    );
-    const brandCurrent: string = grades.overall || grades.aiReadiness || calculateCompositeGrade(
-      [grades.aiReadiness || "C", grades.contentDepth || "C"],
-      [scores.aiReadiness || 0, scores.contentDepth || 0],
-      [0.7, 0.3]
-    );
+    const scoreLabel = (g: string) =>
+      g === "A" || g === "A+" ? "Excellent" :
+      g === "B" || g === "B+" ? "Good" :
+      g === "C" ? "Needs Improvement" : "Needs Significant Improvement";
     
     // Use recommended tier for expected outcome, default to Bronze
     const recommendedTier = tier && tier !== "—" ? tier : "Bronze";
@@ -434,17 +396,17 @@ export async function GET(req: Request) {
             </View>
           )}
 
-          {/* 2. Performance Summary Table */}
+          {/* 2. Performance Summary Table (matches scorecard) */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>2. Plain-English Performance Summary</Text>
+            <Text style={styles.sectionTitle}>2. Scorecard Summary</Text>
             <Text style={[styles.muted, { fontSize: 9, marginBottom: 6 }]}>
-              Current structural and content signal assessment. GPTO strengthens these dimensions.
+              Same scores as the detailed scorecard. GPTO strengthens these dimensions.
             </Text>
             <View style={styles.box}>
-              <TableRow label="AI System Visibility" value={seoCurrent} />
-              <TableRow label="AI Tool Understanding" value={aiCurrent} />
-              <TableRow label="Website Clarity" value={conversionCurrent} />
-              <TableRow label="Brand Recognition" value={brandCurrent} last />
+              <TableRow label="AI Clarity" value={aiCurrent} />
+              <TableRow label="Structure" value={structureCurrent} />
+              <TableRow label="Content Depth" value={contentDepthCurrent} />
+              <TableRow label="Technical" value={technicalCurrent} last />
             </View>
           </View>
 
@@ -455,66 +417,50 @@ export async function GET(req: Request) {
           </View>
         </Page>
 
-        {/* Page 2: Four Key Areas We Analyzed */}
+        {/* Page 2: Four Key Areas We Analyzed (matches scorecard) */}
         <Page size="A4" style={styles.page}>
           <View style={styles.topBar} />
           <View style={styles.header}>
             <Text style={styles.title}>3. Four Key Areas We Analyzed</Text>
             <Text style={[styles.muted, { fontSize: 10, marginTop: 4 }]}>
-              We looked at four important areas that determine how well AI tools and AI systems can find, understand, and recommend your business.
+              Same scores and titles as the scorecard. These dimensions determine how well AI tools and systems can find, understand, and recommend your business.
             </Text>
           </View>
 
-          {/* How Well AI Systems Can Find You */}
+          {/* Technical */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How Well AI Systems Can Find You</Text>
+            <Text style={styles.sectionTitle}>Technical</Text>
             <View style={styles.box}>
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Your Current Score</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 12 }}>
-                <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{seoCurrent}</Text>
-                <Text style={{ fontSize: 10, color: "#666" }}>
-                  {seoCurrent === "A" || seoCurrent === "A+" ? "Excellent" : 
-                   seoCurrent === "B" || seoCurrent === "B+" ? "Good" :
-                   seoCurrent === "C" ? "Needs Improvement" : "Needs Significant Improvement"}
-                </Text>
+                <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{technicalCurrent}</Text>
+                <Text style={{ fontSize: 10, color: "#666" }}>{scoreLabel(technicalCurrent)}</Text>
               </View>
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What We Found</Text>
               <Text style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>What's working well:</Text>
-              {(stStrengths.length > 0 ? stStrengths : trStrengths.length > 0 ? trStrengths : ["Limited observable signals"]).slice(0, 3).map((s, i) => (
+              {(trStrengths.length > 0 ? trStrengths : ["Limited observable signals"]).slice(0, 3).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
               <Text style={{ fontSize: 10, fontWeight: 700, marginTop: 8, marginBottom: 4 }}>Areas for improvement:</Text>
-              {(stGaps.length > 0 ? stGaps : trGaps.length > 0 ? trGaps : ["No critical issues detected"]).slice(0, 3).map((s, i) => (
+              {(trGaps.length > 0 ? trGaps : ["No critical issues detected"]).slice(0, 3).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
                 GPTO makes sure AI systems can easily find and understand all your pages. We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site.
               </Text>
-              
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
-              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO strengthens structural visibility conditions for how well AI systems can find you. It supports clearer organization and reduces ambiguity so systems can better understand your site.
-              </Text>
             </View>
           </View>
 
-          {/* How Well AI Tools Understand Your Business */}
+          {/* AI Clarity */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How Well AI Tools Understand Your Business</Text>
+            <Text style={styles.sectionTitle}>AI Clarity</Text>
             <View style={styles.box}>
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Your Current Score</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 12 }}>
                 <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{aiCurrent}</Text>
-                <Text style={{ fontSize: 10, color: "#666" }}>
-                  {aiCurrent === "A" || aiCurrent === "A+" ? "Excellent" : 
-                   aiCurrent === "B" || aiCurrent === "B+" ? "Good" :
-                   aiCurrent === "C" ? "Needs Improvement" : "Needs Significant Improvement"}
-                </Text>
+                <Text style={{ fontSize: 10, color: "#666" }}>{scoreLabel(aiCurrent)}</Text>
               </View>
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What We Found</Text>
               <Text style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>What's working well:</Text>
               {(aiStrengths.length > 0 ? aiStrengths : ["Answerability signals were limited at this review"]).slice(0, 3).map((s, i) => (
@@ -524,15 +470,9 @@ export async function GET(req: Request) {
               {(aiGaps.length > 0 ? aiGaps : ["No critical issues detected"]).slice(0, 4).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
                 GPTO rewrites your website content so AI tools like ChatGPT can clearly understand what you do, who you serve, and how you help. We'll use consistent, clear language throughout your site so AI tools can confidently recommend your business.
-              </Text>
-              
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
-              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO strengthens how well AI tools understand your business. It reinforces consistent messaging and introduces structural clarity so AI systems can better recommend your brand.
               </Text>
             </View>
           </View>
@@ -544,78 +484,56 @@ export async function GET(req: Request) {
           </View>
         </Page>
 
-        {/* Page 3: Conversion, Brand, Packages */}
+        {/* Page 3: Structure, Content Depth, Overall */}
         <Page size="A4" style={styles.page}>
           <View style={styles.topBar} />
 
-          {/* How Clear Your Website Is to Visitors */}
+          {/* Structure */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How Clear Your Website Is to Visitors</Text>
+            <Text style={styles.sectionTitle}>Structure</Text>
             <View style={styles.box}>
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Your Current Score</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 12 }}>
-                <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{conversionCurrent}</Text>
-                <Text style={{ fontSize: 10, color: "#666" }}>
-                  {conversionCurrent === "A" || conversionCurrent === "A+" ? "Excellent" : 
-                   conversionCurrent === "B" || conversionCurrent === "B+" ? "Good" :
-                   conversionCurrent === "C" ? "Needs Improvement" : "Needs Significant Improvement"}
-                </Text>
+                <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{structureCurrent}</Text>
+                <Text style={{ fontSize: 10, color: "#666" }}>{scoreLabel(structureCurrent)}</Text>
               </View>
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What We Found</Text>
               <Text style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>What's working well:</Text>
-              {(cdStrengths.length > 0 ? cdStrengths : stStrengths.length > 0 ? stStrengths : ["Limited observable signals"]).slice(0, 3).map((s, i) => (
+              {(stStrengths.length > 0 ? stStrengths : ["Limited observable signals"]).slice(0, 3).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
               <Text style={{ fontSize: 10, fontWeight: 700, marginTop: 8, marginBottom: 4 }}>Areas for improvement:</Text>
-              {(cdGaps.length > 0 ? cdGaps : stGaps.length > 0 ? stGaps : ["No critical issues detected"]).slice(0, 3).map((s, i) => (
+              {(stGaps.length > 0 ? stGaps : ["No critical issues detected"]).slice(0, 3).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them. Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want.
-              </Text>
-              
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
-              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO strengthens website clarity for visitors. It supports clearer communication of what you offer and reduces ambiguity so visitors can better understand your value.
+                GPTO aligns your page titles, headings, and descriptions so both visitors and AI systems can quickly understand your content. Clear hierarchy and structure help AI tools extract and recommend your pages accurately.
               </Text>
             </View>
           </View>
 
-          {/* How Strongly Your Brand Comes Through */}
+          {/* Content Depth */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How Strongly Your Brand Comes Through</Text>
+            <Text style={styles.sectionTitle}>Content Depth</Text>
             <View style={styles.box}>
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Your Current Score</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 12 }}>
-                <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{brandCurrent}</Text>
-                <Text style={{ fontSize: 10, color: "#666" }}>
-                  {brandCurrent === "A" || brandCurrent === "A+" ? "Excellent" : 
-                   brandCurrent === "B" || brandCurrent === "B+" ? "Good" :
-                   brandCurrent === "C" ? "Needs Improvement" : "Needs Significant Improvement"}
-                </Text>
+                <Text style={{ fontSize: 20, fontWeight: 900, marginRight: 8 }}>{contentDepthCurrent}</Text>
+                <Text style={{ fontSize: 10, color: "#666" }}>{scoreLabel(contentDepthCurrent)}</Text>
               </View>
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What We Found</Text>
               <Text style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>What's working well:</Text>
-              {(aiStrengths.length > 0 ? aiStrengths : ["Answerability signals were limited at this review"]).slice(0, 3).map((s, i) => (
+              {(cdStrengths.length > 0 ? cdStrengths : ["Limited observable signals"]).slice(0, 3).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
               <Text style={{ fontSize: 10, fontWeight: 700, marginTop: 8, marginBottom: 4 }}>Areas for improvement:</Text>
-              {(aiGaps.length > 0 ? aiGaps : ["No critical issues detected"]).slice(0, 4).map((s, i) => (
+              {(cdGaps.length > 0 ? cdGaps : ["No critical issues detected"]).slice(0, 3).map((s, i) => (
                 <Text key={i} style={styles.bullet}>• {s}</Text>
               ))}
-              
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO ensures your brand message comes through consistently everywhere people might find you. Your unique value and what makes you different will be clearly communicated, so people understand why to choose you.
-              </Text>
-              
-              <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>What GPTO Strengthens</Text>
-              <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO strengthens how strongly your brand comes through. It reinforces consistent messaging across discovery channels and introduces structural clarity for your unique value.
+                GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them. Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want.
               </Text>
             </View>
           </View>

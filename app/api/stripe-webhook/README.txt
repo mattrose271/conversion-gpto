@@ -1,2 +1,2 @@
-// Implement in /api/stripe-webhook when STRIPE_WEBHOOK_SECRET is ready.
-// On purchase completed, send an email to PRIMARY_EMAIL with customer + plan details.
+// Stripe webhook endpoint is implemented at /api/stripe-webhook.
+// Configure STRIPE_WEBHOOK_SECRET and forward Stripe events here.

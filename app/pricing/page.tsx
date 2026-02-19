@@ -19,6 +19,7 @@ function PricingPageContent() {
   const searchParams = useSearchParams();
   const highlightTier = normalizeTier(searchParams?.get("tier") || undefined);
   const website = (searchParams?.get("url") || "").toString();
+  const wasCanceled = (searchParams?.get("canceled") || "") === "1";
 
   function handleAuditClick(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
@@ -47,9 +48,15 @@ function PricingPageContent() {
 
           <p className="muted" style={{ maxWidth: "100%" }}>
             {highlightTier
-              ? `Based on your audit, we recommend the ${highlightTier} tier. Review the package below and click Get Started to contact our team.`
+              ? `Based on your audit, we recommend the ${highlightTier} tier. Review the package below and click Get Started to continue to secure checkout.`
               : "Browse our tiers below. Run the audit to receive a tailored recommendation."}
           </p>
+
+          {wasCanceled && (
+            <p style={{ maxWidth: "100%", marginTop: 10, fontWeight: 700 }}>
+              Checkout was canceled. You can restart securely at any time.
+            </p>
+          )}
 
           {!highlightTier && (
             <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>

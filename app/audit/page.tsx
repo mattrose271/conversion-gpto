@@ -869,10 +869,7 @@ export default function AuditPage() {
                     </div>
                   )}
 
-                  {/* 3. Plain-English Performance Summary Table */}
-                  <PerformanceSummaryTable report={report} />
-
-                  {/* 4. Core GPTO Audit (4 Dimensions) */}
+                  {/* 3. Core GPTO Audit (4 Dimensions) */}
                   <div style={{ marginTop: 20 }}>
                     <h3 style={{ marginBottom: 12, color: "var(--brand-red)" }}>Four Key Areas We Analyzed</h3>
                     <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
@@ -945,10 +942,7 @@ export default function AuditPage() {
                   {/* 5. Package Capability Tables */}
                   <PackageCapabilityTable report={report} />
 
-                  {/* 6. Growth Progression Tables */}
-                  <GrowthProgressionTable />
-
-                  {/* 7. Strategic Positioning */}
+                  {/* 6. Strategic Positioning */}
                   <div className="card" style={{ marginTop: 20 }}>
                     <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Which Package Fits Your Needs</h3>
                     <p style={{ margin: 0, lineHeight: 1.7 }}>
@@ -958,13 +952,13 @@ export default function AuditPage() {
                     </p>
                   </div>
 
-                  {/* 8. 90-Day First Wins Roadmap */}
+                  {/* 7. 90-Day First Wins Roadmap */}
                   <RoadmapTimeline />
 
-                  {/* 9. Evidence Appendix (Optional) */}
+                  {/* 8. Evidence Appendix (Optional) */}
                   <EvidenceAppendix report={report} />
 
-                  {/* 10. Final Close */}
+                  {/* 9. Final Close */}
                   <FinalClose report={report} />
                 </div>
               )}
@@ -993,234 +987,6 @@ export default function AuditPage() {
           © {new Date().getFullYear()} Conversion Interactive Agency — All rights reserved.
         </div>
       </footer>
-    </div>
-  );
-}
-
-// Performance Summary Table Component
-function PerformanceSummaryTable({ report }: { report: any }) {
-  const [selectedTier, setSelectedTier] = useState<"Bronze" | "Silver" | "Gold">("Bronze");
-  const g = report?.grades || {};
-  const s = report?.scores || {};
-
-  // Smarter grade calculation helper
-  const calculateCompositeGrade = (grades: string[], scores: number[], weights: number[] = []) => {
-    const gradeOrder = ["F", "D", "C", "B-", "B", "B+", "A-", "A", "A+"];
-    const gradeValues: Record<string, number> = {
-      "F": 0, "D": 1, "C": 2, "B-": 2.5, "B": 3, "B+": 3.5, "A-": 4, "A": 4.5, "A+": 5
-    };
-    
-    // Use scores if available for more precision
-    if (scores.length > 0 && scores.every(sc => typeof sc === "number")) {
-      const avgScore = scores.reduce((a, b, i) => a + (b * (weights[i] || 1)), 0) / 
-                      scores.reduce((a, _, i) => a + (weights[i] || 1), 0);
-      if (avgScore >= 90) return "A";
-      if (avgScore >= 80) return "B";
-      if (avgScore >= 70) return "C";
-      if (avgScore >= 60) return "D";
-      return "F";
-    }
-    
-    // Fall back to grade averaging
-    const validGrades = grades.filter(gr => gradeOrder.includes(gr));
-    if (validGrades.length === 0) return "C";
-    
-    const avgValue = validGrades.reduce((sum, gr) => sum + (gradeValues[gr] || 2), 0) / validGrades.length;
-    if (avgValue >= 4.5) return "A";
-    if (avgValue >= 3.5) return "B+";
-    if (avgValue >= 3) return "B";
-    if (avgValue >= 2.5) return "B-";
-    if (avgValue >= 2) return "C";
-    if (avgValue >= 1) return "D";
-    return "F";
-  };
-
-  // Map dimensions with smarter calculations
-  const seoCurrent = calculateCompositeGrade(
-    [g.structure || "C", g.technicalReadiness || "C"],
-    [s.structure || 0, s.technicalReadiness || 0],
-    [0.5, 0.5]
-  );
-  const aiCurrent = g.aiReadiness || "C";
-  const conversionCurrent = calculateCompositeGrade(
-    [g.contentDepth || "C", g.structure || "C"],
-    [s.contentDepth || 0, s.structure || 0],
-    [0.6, 0.4]
-  );
-  const brandCurrent = g.overall || g.aiReadiness || calculateCompositeGrade(
-    [g.aiReadiness || "C", g.contentDepth || "C"],
-    [s.aiReadiness || 0, s.contentDepth || 0],
-    [0.7, 0.3]
-  );
-
-  // Tier-specific detailed descriptions
-  const getMeaning = (dimension: string, current: string, withPackage: string, tier: "Bronze" | "Silver" | "Gold") => {
-    const tierDetails: Record<"Bronze" | "Silver" | "Gold", Record<string, Record<string, string>>> = {
-      "Bronze": {
-        "SEO Strength": {
-          "D": "Essential schema markup on key pages helps AI systems understand your core services. Basic structure improvements make your site more discoverable.",
-          "C": "Essential schema markup clarifies your services for AI systems. Refined messaging on top pages improves how you're found and understood.",
-          "B": "Essential schema markup and refined messaging strengthen your AI visibility. Your site becomes clearer to AI systems searching for what you offer.",
-          "A": "Essential schema markup fine-tunes your already strong foundation. Top-page messaging refinements optimize your AI discoverability."
-        },
-        "AI Discoverability": {
-          "D": "Refined top-page messaging helps AI tools like ChatGPT explain your business. Essential schema markup provides clear signals about what you do.",
-          "C": "Refined messaging ensures AI tools consistently understand your business. Essential schema markup helps them recommend you accurately.",
-          "B": "Refined messaging and essential schema markup help AI tools explain your business more accurately. They'll recommend you more confidently.",
-          "A": "Refined messaging and essential schema markup ensure AI tools always get your business right. Your visibility across AI platforms improves."
-        },
-        "Website Clarity": {
-          "D": "Refined top-page messaging clarifies who you help and how. Visitors understand if you're right for them before they leave.",
-          "C": "Refined messaging makes it clearer who you serve and what problems you solve. Visitors can better self-qualify.",
-          "B": "Refined messaging enhances clarity so more qualified visitors take action. Your site flow becomes more effective.",
-          "A": "Refined messaging optimizes your already clear site. Visitors arrive better-informed and more ready to engage."
-        },
-        "Brand Signal": {
-          "D": "Refined messaging makes your unique value clear and consistent. Essential schema markup reinforces your brand signals.",
-          "C": "Refined messaging ensures your brand message is consistent and strong. Essential schema markup helps AI systems recognize your brand.",
-          "B": "Refined messaging strengthens your brand consistency. Essential schema markup ensures your brand is recognized across AI platforms.",
-          "A": "Refined messaging and essential schema markup keep your strong brand consistent everywhere AI systems encounter you."
-        }
-      },
-      "Silver": {
-        "SEO Strength": {
-          "D": "Full-site schema implementation (Organization, Service/Product, Local, FAQ) helps AI systems deeply understand your entire site structure and offerings.",
-          "C": "Full-site schema implementation provides comprehensive signals to AI systems. Your entire site becomes more discoverable and understandable.",
-          "B": "Full-site schema implementation strengthens your AI visibility across all pages. AI systems can better categorize and recommend your services.",
-          "A": "Full-site schema implementation optimizes your strong foundation. Every page is perfectly structured for maximum AI discoverability."
-        },
-        "AI Discoverability": {
-          "D": "Full-site schema implementation helps AI tools understand your complete business. Five-competitor analysis reveals how to improve your AI visibility.",
-          "C": "Full-site schema implementation ensures AI tools understand your business comprehensively. Competitive insights guide improvements to your AI presence.",
-          "B": "Full-site schema implementation helps AI tools explain your business more accurately. Competitive analysis shows how to stand out in AI recommendations.",
-          "A": "Full-site schema implementation ensures AI tools always get your business right. Competitive insights help you maintain leadership in AI discovery."
-        },
-        "Website Clarity": {
-          "D": "Full-site schema implementation and structured content improvements clarify your entire site. Visitors understand your value across all pages.",
-          "C": "Full-site schema implementation makes your entire site clearer. Structured content improvements help visitors self-qualify more effectively.",
-          "B": "Full-site schema implementation enhances clarity site-wide. Structured content improvements support clearer visitor engagement.",
-          "A": "Full-site schema implementation optimizes your already clear site. Structured content improvements maximize clarity potential."
-        },
-        "Brand Signal": {
-          "D": "Full-site schema implementation reinforces your brand consistently across all pages. Competitive analysis reveals how to strengthen your brand signals.",
-          "C": "Full-site schema implementation ensures your brand message is consistent everywhere. Competitive insights help you differentiate your brand.",
-          "B": "Full-site schema implementation strengthens your brand consistency site-wide. Competitive analysis helps you maintain brand leadership.",
-          "A": "Full-site schema implementation keeps your strong brand consistent everywhere. Competitive insights help you maintain brand dominance."
-        }
-      },
-      "Gold": {
-        "SEO Strength": {
-          "D": "Dynamic schema adapts in real-time to search signals, ensuring AI systems always understand your latest offerings. Real-time optimization maximizes your visibility.",
-          "C": "Dynamic schema and real-time optimization ensure AI systems always have the most current understanding of your business. Your visibility adapts to trends.",
-          "B": "Dynamic schema and real-time optimization keep your AI visibility at peak performance. AI systems always have the latest information about your services.",
-          "A": "Dynamic schema and real-time optimization maintain your leadership position. AI systems consistently recognize you as the top choice in your category."
-        },
-        "AI Discoverability": {
-          "D": "Real-time optimization ensures AI tools always have current information about your business. 10-competitor mapping reveals how to dominate AI recommendations.",
-          "C": "Real-time optimization keeps AI tools updated with your latest offerings. Advanced competitive intelligence guides your AI visibility strategy.",
-          "B": "Real-time optimization ensures AI tools always recommend you accurately. Multi-market competitive analysis helps you lead in AI discovery.",
-          "A": "Real-time optimization maintains your AI leadership. Advanced competitive intelligence ensures you stay ahead in AI tool recommendations."
-        },
-        "Website Clarity": {
-          "D": "Real-time optimization adapts your site based on visitor behavior. AI-supported guidance improves how visitors understand and engage with your brand.",
-          "C": "Real-time optimization enhances clarity based on actual visitor patterns. AI-supported improvements support clearer engagement.",
-          "B": "Real-time optimization fine-tunes your site for maximum clarity. AI-supported insights optimize visitor experience continuously.",
-          "A": "Real-time optimization maintains peak clarity performance. AI-supported insights ensure you stay ahead of visitor expectations."
-        },
-        "Brand Signal": {
-          "D": "Real-time optimization ensures your brand signals adapt to market changes. 10-competitor mapping and AI-supported reputation building strengthen your brand authority.",
-          "C": "Real-time optimization keeps your brand signals current and strong. Advanced competitive intelligence and reputation building maintain your brand leadership.",
-          "B": "Real-time optimization ensures your brand stays ahead of competitors. Multi-market authority mapping and reputation building maintain your dominance.",
-          "A": "Real-time optimization maintains your brand's elite position. Advanced competitive intelligence and reputation building ensure you stay the category leader."
-        }
-      }
-    };
-    
-    const gradeKey = current === "F" || current === "D" ? "D" :
-                    current === "C" || current === "B-" ? "C" :
-                    current === "B" || current === "B+" ? "B" : "A";
-    
-    return tierDetails[tier]?.[dimension]?.[gradeKey] || tierDetails[tier]?.[dimension]?.["C"] || `${tier} package strengthens this dimension.`;
-  };
-
-  const dimensions = [
-    {
-      name: "AI System Visibility",
-      current: seoCurrent,
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("SEO Strength", seoCurrent, seoCurrent, tier)
-    },
-    {
-      name: "AI Tool Understanding",
-      current: aiCurrent,
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("AI Discoverability", aiCurrent, aiCurrent, tier)
-    },
-    {
-      name: "Website Clarity",
-      current: conversionCurrent,
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Website Clarity", conversionCurrent, conversionCurrent, tier)
-    },
-    {
-      name: "Brand Recognition",
-      current: brandCurrent,
-      getMeaning: (tier: "Bronze" | "Silver" | "Gold") => getMeaning("Brand Signal", brandCurrent, brandCurrent, tier)
-    }
-  ];
-
-  const tiers: Array<"Bronze" | "Silver" | "Gold"> = ["Bronze", "Silver", "Gold"];
-
-  return (
-    <div className="card" style={{ marginBottom: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Current Performance</h3>
-      <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
-        See how your site performs today. Select a tier to see what GPTO strengthens in each area.
-      </p>
-
-      {/* Tier selector */}
-      <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {tiers.map((tier) => (
-          <button
-            key={tier}
-            onClick={() => setSelectedTier(tier)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 6,
-              border: selectedTier === tier ? "2px solid var(--brand-red)" : "1px solid rgba(0,0,0,.15)",
-              background: selectedTier === tier ? "rgba(194, 15, 44, 0.1)" : "white",
-              color: selectedTier === tier ? "var(--brand-red)" : "#333",
-              fontWeight: selectedTier === tier ? 700 : 600,
-              cursor: "pointer",
-              fontSize: 14,
-              transition: "all 0.2s ease"
-            }}
-          >
-            {tier}
-          </button>
-        ))}
-      </div>
-
-      <div className="table-wrapper" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid rgba(0,0,0,.1)" }}>
-              <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>Performance Area</th>
-              <th style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>Current Status</th>
-              <th style={{ padding: "12px", textAlign: "left", fontWeight: 700 }}>What {selectedTier} Strengthens</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dimensions.map((dim, i) => {
-              const meaning = dim.getMeaning(selectedTier);
-              return (
-                <tr key={i} style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                  <td style={{ padding: "12px", fontWeight: 600 }}>{dim.name}</td>
-                  <td style={{ padding: "12px", textAlign: "center", fontWeight: 700 }}>{dim.current}</td>
-                  <td style={{ padding: "12px", lineHeight: 1.5, color: "#333" }}>{meaning}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -1288,44 +1054,6 @@ function PackageCapabilityTable({ report }: { report: any }) {
         >
           View Our Packages →
         </a>
-      </div>
-    </div>
-  );
-}
-
-// Growth Progression Table Component
-function GrowthProgressionTable() {
-  const packages = [
-    { package: "Bronze", outcome: "Signal clarity & noise reduction", grade: "B-" },
-    { package: "Silver", outcome: "Discoverability & efficiency", grade: "B+" },
-    { package: "Gold", outcome: "Authority & leadership", grade: "A" }
-  ];
-
-  return (
-    <div className="card" style={{ marginTop: 20 }}>
-      <h3 style={{ marginTop: 0, marginBottom: 10, color: "var(--brand-red)" }}>Expected Outcomes by Package</h3>
-      <p className="muted" style={{ marginTop: 0, marginBottom: 14, fontSize: 14 }}>
-        Each package focuses on different improvements. These scores show what you can typically expect based on similar implementations.
-      </p>
-      <div className="table-wrapper" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 400 }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid rgba(0,0,0,.15)" }}>
-              <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700 }}>Package</th>
-              <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700 }}>Primary Focus</th>
-              <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 700 }}>Expected Grade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {packages.map((pkg, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid rgba(0,0,0,.08)" }}>
-                <td style={{ padding: "10px 12px", fontWeight: 600 }}>{pkg.package}</td>
-                <td style={{ padding: "10px 12px" }}>{pkg.outcome}</td>
-                <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 700 }}>{pkg.grade}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );
@@ -1599,6 +1327,11 @@ function renderAuditDimension(
   tier: string,
   websiteUrl: string
 ) {
+  const isCOrLower = (grade: string) => {
+    const g = String(grade || "").trim().toUpperCase();
+    return g.startsWith("C") || g.startsWith("D") || g.startsWith("F");
+  };
+
   // Use exact grade from scorecard (same as Scorecard table)
   const resolvedGradeKey = gradeKey === "aiReadiness" && grades?.aiClarity !== undefined ? "aiClarity" : gradeKey;
   const currentGrade = grades?.[resolvedGradeKey] ?? "C";
@@ -1640,24 +1373,24 @@ function renderAuditDimension(
 
   // What GPTO Changes (dimension-specific, plain English)
   const gptoChanges: string[] = [];
-  const isLowGrade = currentGrade === "D" || currentGrade === "F" || currentGrade === "C";
+  const isLowGrade = isCOrLower(currentGrade);
   const isHighGrade = currentGrade === "A" || currentGrade === "A+" || currentGrade === "B+";
 
   const dimHelp: Record<string, { low: [string, string]; high: [string, string] }> = {
     Technical: {
-      low: ["GPTO makes sure AI systems can easily find and understand all your pages.", "We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site."],
+      low: ["Your current technical setup limits how confidently AI systems can read and classify your site.", "Inconsistent schema implementation and diluted structural signals are reducing machine-level interpretability."],
       high: ["GPTO makes your website even easier for AI systems to find and understand.", "We'll improve how your website information is organized so AI systems can better list and recommend your site."],
     },
     "AI Clarity": {
-      low: ["GPTO rewrites your website content so AI tools like ChatGPT can clearly understand what you do, who you serve, and how you help.", "We'll use consistent, clear language throughout your site so AI tools can confidently recommend your business."],
+      low: ["AI tools don’t have a clear understanding of exactly what you do and who you’re for.", "Category positioning and entity definition lack precision across key classification signals."],
       high: ["GPTO improves how AI tools understand and describe your business.", "We'll refine your website language so AI tools can more accurately recommend your business to people searching for what you offer."],
     },
     Structure: {
-      low: ["GPTO aligns your page titles, headings, and descriptions so both visitors and AI systems can quickly understand your content.", "Clear hierarchy and structure help AI tools extract and recommend your pages accurately."],
+      low: ["Your current page organization makes it difficult for AI tools to understand what topics you’re strongest in.", "Topical clustering and internal authority flow are under-optimised for retrieval modelling."],
       high: ["GPTO fine-tunes your structure for maximum clarity and AI extractability.", "Your pages will be even easier for both visitors and AI systems to navigate."],
     },
     "Content Depth": {
-      low: ["GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them.", "Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want."],
+      low: ["Your content isn’t strong or specific enough for AI systems to consistently reference or recommend you.", "Depth, semantic richness, and structured authority signals are insufficient for citation weighting."],
       high: ["GPTO makes your website even clearer and more helpful for visitors.", "Visitors will arrive better-informed, leading to more qualified leads and better results."],
     },
     Overall: {

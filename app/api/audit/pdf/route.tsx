@@ -239,6 +239,24 @@ function TableRow({ label, value, last }: { label: string; value: string; last?:
   );
 }
 
+function isCOrLower(grade: string) {
+  const g = String(grade || "").trim().toUpperCase();
+  return g.startsWith("C") || g.startsWith("D") || g.startsWith("F");
+}
+
+function lowGradeMessage(section: "Technical" | "AI Clarity" | "Website Structure" | "Content") {
+  if (section === "Technical") {
+    return "Your current technical setup limits how confidently AI systems can read and classify your site. Inconsistent schema implementation and diluted structural signals are reducing machine-level interpretability.";
+  }
+  if (section === "AI Clarity") {
+    return "AI tools don’t have a clear understanding of exactly what you do and who you’re for. Category positioning and entity definition lack precision across key classification signals.";
+  }
+  if (section === "Website Structure") {
+    return "Your current page organization makes it difficult for AI tools to understand what topics you’re strongest in. Topical clustering and internal authority flow are under-optimised for retrieval modelling.";
+  }
+  return "Your content isn’t strong or specific enough for AI systems to consistently reference or recommend you. Depth, semantic richness, and structured authority signals are insufficient for citation weighting.";
+}
+
 export async function GET(req: Request) {
   try {
     // 1) Read URL and optional params from query
@@ -345,8 +363,18 @@ export async function GET(req: Request) {
       g === "B" || g === "B+" ? "Good" :
       g === "C" ? "Needs Improvement" : "Needs Significant Improvement";
     
-    // Use recommended tier for expected outcome, default to Bronze
-    const recommendedTier = tier && tier !== "—" ? tier : "Bronze";
+    const technicalHelpText = isCOrLower(technicalCurrent)
+      ? lowGradeMessage("Technical")
+      : "GPTO makes your website even easier for AI systems to find and understand. We'll improve how your website information is organized so AI systems can better list and recommend your site.";
+    const aiHelpText = isCOrLower(aiCurrent)
+      ? lowGradeMessage("AI Clarity")
+      : "GPTO improves how AI tools understand and describe your business. We'll refine your website language so AI tools can more accurately recommend your business to people searching for what you offer.";
+    const structureHelpText = isCOrLower(structureCurrent)
+      ? lowGradeMessage("Website Structure")
+      : "GPTO fine-tunes your structure for maximum clarity and AI extractability. Your pages will be even easier for both visitors and AI systems to navigate.";
+    const contentHelpText = isCOrLower(contentDepthCurrent)
+      ? lowGradeMessage("Content")
+      : "GPTO makes your website even clearer and more helpful for visitors. Visitors will arrive better-informed, leading to more qualified leads and better results.";
 
     // 4) Build PDF with customer-facing template
     const Pdf = (
@@ -447,7 +475,7 @@ export async function GET(req: Request) {
               ))}
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO makes sure AI systems can easily find and understand all your pages. We'll organize your website information in a way that AI systems love, so they can properly list and recommend your site.
+                {technicalHelpText}
               </Text>
             </View>
           </View>
@@ -472,7 +500,7 @@ export async function GET(req: Request) {
               ))}
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO rewrites your website content so AI tools like ChatGPT can clearly understand what you do, who you serve, and how you help. We'll use consistent, clear language throughout your site so AI tools can confidently recommend your business.
+                {aiHelpText}
               </Text>
             </View>
           </View>
@@ -508,7 +536,7 @@ export async function GET(req: Request) {
               ))}
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO aligns your page titles, headings, and descriptions so both visitors and AI systems can quickly understand your content. Clear hierarchy and structure help AI tools extract and recommend your pages accurately.
+                {structureHelpText}
               </Text>
             </View>
           </View>
@@ -533,7 +561,7 @@ export async function GET(req: Request) {
               ))}
               <Text style={[styles.boxTitle, { marginTop: 12, marginBottom: 6 }]}>How GPTO Will Help</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>
-                GPTO adds clear, helpful information so visitors immediately understand what you offer and whether it's right for them. Visitors will arrive better-informed, which means fewer people leave confused and more people take the actions you want.
+                {contentHelpText}
               </Text>
             </View>
           </View>
@@ -605,23 +633,13 @@ export async function GET(req: Request) {
           </View>
         </Page>
 
-        {/* Page 4: Growth, Strategy, Roadmap, Close */}
+        {/* Page 4: Strategy, Roadmap, Close */}
         <Page size="A4" style={styles.page}>
           <View style={styles.topBar} />
 
-          {/* Growth Progression */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>5. Growth Progression Tables</Text>
-            <View style={styles.box}>
-              <TableRow label="Bronze" value="B- (Signal clarity & noise reduction)" />
-              <TableRow label="Silver" value="B+ (Discoverability & efficiency)" />
-              <TableRow label="Gold" value="A (Authority & leadership)" last />
-            </View>
-          </View>
-
           {/* Strategic Positioning */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>6. Strategic Positioning</Text>
+            <Text style={styles.sectionTitle}>5. Strategic Positioning</Text>
             <Text style={{ fontSize: 10, lineHeight: 1.5, marginTop: 4 }}>
               Bronze establishes clarity and control. Silver improves efficiency when ready. Gold is a long-term option for category leadership — not a requirement.
             </Text>
@@ -629,7 +647,7 @@ export async function GET(req: Request) {
 
           {/* 90-Day Roadmap */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>7. 90-Day First Wins Roadmap</Text>
+            <Text style={styles.sectionTitle}>6. 90-Day First Wins Roadmap</Text>
             <View style={styles.box}>
               <Text style={styles.bullet}>Weeks 1–2: Structural fixes & signal cleanup</Text>
               <Text style={styles.bullet}>Weeks 3–6: AI readability & routing improvements</Text>
@@ -639,7 +657,7 @@ export async function GET(req: Request) {
 
           {/* Final Close */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>8. Ready to Improve Your AI Visibility?</Text>
+            <Text style={styles.sectionTitle}>7. Ready to Improve Your AI Visibility?</Text>
             <View style={[styles.box, { marginBottom: 12 }]}>
               <Text style={[styles.boxTitle, { marginBottom: 8 }]}>Why This Matters Right Now</Text>
               <Text style={{ fontSize: 10, lineHeight: 1.5 }}>

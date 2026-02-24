@@ -20,6 +20,15 @@ export function ProposalSection({
   const deliverables = getTierDeliverables(recommendedTier);
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL || "";
 
+  // Replace SEO-derived company name with website URL so it reads: "This report was run for [URL] has excellent structure..."
+  const displaySummary =
+    websiteUrl && executiveSummary
+      ? (() => {
+          const withUrl = executiveSummary.replace(/^.+?(?=\s+has\s+)/i, () => `This report was run for ${websiteUrl} `);
+          return withUrl !== executiveSummary ? withUrl : `This report was run for ${websiteUrl}. ${executiveSummary}`;
+        })()
+      : executiveSummary;
+
   const buildCalendlyUrl = () => {
     if (!calendlyUrl) return "#";
     try {
@@ -60,13 +69,13 @@ export function ProposalSection({
         </h3>
       </div>
 
-      {executiveSummary && (
+      {displaySummary && (
         <div style={{ marginBottom: 20 }}>
           <p style={{ margin: 0, fontWeight: 700, marginBottom: 8, fontSize: 14 }}>
             Executive Summary
           </p>
           <p style={{ margin: 0, color: "#333", lineHeight: 1.6, whiteSpace: "pre-line" }}>
-            {executiveSummary}
+            {displaySummary}
           </p>
         </div>
       )}

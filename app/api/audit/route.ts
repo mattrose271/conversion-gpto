@@ -30,6 +30,34 @@ function normalizeInputUrl(input: string) {
   return u.toString();
 }
 
+async function resolveCanonicalUrl(normalizedUrl: string): Promise<string> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(normalizedUrl, {
+      redirect: "follow",
+      method: "HEAD",
+      signal: controller.signal,
+      headers: { "user-agent": "GPTO-AuditBot/0.1" },
+    });
+    clearTimeout(t);
+    const finalUrl = res.url;
+    const u = new URL(finalUrl);
+    u.hash = "";
+    // Prefer https for cache/origin consistency
+    const origin = u.protocol === "https:" ? u.origin : `https://${u.host}`;
+    return `${origin}${u.pathname || "/"}${u.search}`;
+  } catch {
+    clearTimeout(t);
+    // Fallback: force https for consistency
+    const u = new URL(normalizedUrl);
+    if (u.protocol === "http:") {
+      return normalizedUrl.replace(/^http:\/\//i, "https://");
+    }
+    return normalizedUrl;
+  }
+}
+
 function toGrade(score: number) {
   if (score === 100) return "A+";
   if (score >= 90) return "A";
@@ -1006,7 +1034,8 @@ function normalizeCompetitorUrls(urls: string[]): string[] {
 export async function POST(req: Request) {
   try {
     const parsed = Body.parse(await req.json());
-    const url = normalizeInputUrl(parsed.url);
+    const normalized = normalizeInputUrl(parsed.url);
+    const url = await resolveCanonicalUrl(normalized);
     const focusArea = parsed.focusArea?.trim() || null;
     const competitors = normalizeCompetitorUrls(parsed.competitors || []);
 

@@ -7,6 +7,7 @@ import { getStripeClient } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function escapeHtml(value: string): string {
   return value
@@ -332,26 +333,35 @@ async function processEvent(stripe: Stripe, event: Stripe.Event) {
 }
 
 export async function POST(req: Request) {
-  const stripe = getStripeClient();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
+    console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET is not set");
     return NextResponse.json(
-      { ok: false, error: "Webhook not configured. Add STRIPE_WEBHOOK_SECRET from Stripe Dashboard > Webhooks when ready." },
+      { ok: false, error: "Webhook not configured. Add STRIPE_WEBHOOK_SECRET from Stripe Dashboard > Webhooks." },
       { status: 503 }
     );
   }
 
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
+    console.error("[Stripe Webhook] Missing stripe-signature header");
     return NextResponse.json({ ok: false, error: "Missing stripe-signature header" }, { status: 400 });
   }
 
+  let body: string;
+  try {
+    body = await req.text();
+  } catch (error: any) {
+    console.error("[Stripe Webhook] Failed to read request body:", error?.message);
+    return NextResponse.json({ ok: false, error: "Invalid request body" }, { status: 400 });
+  }
+
+  const stripe = getStripeClient();
   let event: Stripe.Event;
   try {
-    const body = await req.text();
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (error: any) {
-    console.error("Stripe webhook verification failed:", error);
+    console.error("[Stripe Webhook] Signature verification failed:", error?.message);
     return NextResponse.json({ ok: false, error: `Invalid signature: ${error?.message || "unknown"}` }, { status: 400 });
   }
 
@@ -365,7 +375,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   } catch (error: any) {
     await unmarkEvent(event);
-    console.error("Stripe webhook processing failed:", error);
+    console.error("[Stripe Webhook] Processing failed:", event.id, event.type, error?.message);
     return NextResponse.json({ ok: false, error: error?.message || "Webhook processing failed" }, { status: 500 });
   }
 }

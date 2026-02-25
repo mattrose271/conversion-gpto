@@ -5,17 +5,22 @@ let cachedKey: string | null = null;
 
 /**
  * Returns the Stripe secret key.
- * - STRIPE_USE_LIVE=true: use STRIPE_LIVE_SECRET_KEY (real payments)
- * - Otherwise: always use STRIPE_SECRET_KEY (sandbox) — default for dev and production until you opt in
+ * - STRIPE_USE_LIVE=true or NEXT_PUBLIC_ENV=production: use STRIPE_LIVE_SECRET_KEY (production)
+ * - STRIPE_USE_LIVE=false: force test mode even in production
+ * - Otherwise: use STRIPE_SECRET_KEY (sandbox)
  */
 function getStripeSecretKey(): string {
-  const useLive = process.env.STRIPE_USE_LIVE === "true";
+  const explicitLive = process.env.STRIPE_USE_LIVE === "true";
+  const explicitTest = process.env.STRIPE_USE_LIVE === "false";
+  const isProduction = process.env.NEXT_PUBLIC_ENV === "production";
+  const useLive = explicitLive || (isProduction && !explicitTest);
+
   const testKey = process.env.STRIPE_SECRET_KEY;
   const liveKey = process.env.STRIPE_LIVE_SECRET_KEY;
 
   if (useLive) {
     if (liveKey) return liveKey;
-    throw new Error("STRIPE_USE_LIVE is true but STRIPE_LIVE_SECRET_KEY is not set.");
+    throw new Error("Production mode requires STRIPE_LIVE_SECRET_KEY. Set it in .env");
   }
   if (testKey) return testKey;
   throw new Error(

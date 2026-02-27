@@ -16,9 +16,27 @@ const Body = z.object({
   tier: z.string().optional().default("")
 });
 
+function sanitize(str: string, maxLen = 500): string {
+  return String(str || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, maxLen);
+}
+
 export async function POST(req: Request) {
   try {
-    const input = Body.parse(await req.json());
+    const raw = await req.json();
+    const parsed = Body.parse(raw);
+    const input = {
+      name: sanitize(parsed.name),
+      businessName: sanitize(parsed.businessName),
+      website: sanitize(parsed.website),
+      email: parsed.email.trim().toLowerCase(),
+      contactNumber: sanitize(parsed.contactNumber),
+      industry: sanitize(parsed.industry),
+      message: sanitize(parsed.message, 5000),
+      tier: sanitize(parsed.tier),
+    };
 
     // Get recipients from environment variable or use default
     const recipientsEnv = process.env.AUDIT_EMAIL_RECIPIENTS || "jlethgo@conversionia.com";
@@ -54,6 +72,10 @@ export async function POST(req: Request) {
     }
 
     const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head><meta charset="UTF-8"></head>
+      <body>
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #C20F2C; margin-top: 0;">New GPTO Contact Request</h2>
         <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
@@ -74,6 +96,8 @@ export async function POST(req: Request) {
           </div>
         ` : ""}
       </div>
+      </body>
+      </html>
     `;
 
     await sendEmail({

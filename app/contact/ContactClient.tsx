@@ -49,19 +49,20 @@ export default function ContactClient({
     setLoading(true);
 
     try {
+      const payload = {
+        name: String(name || "").trim(),
+        businessName: String(businessName || "").trim(),
+        website: String(website || "").trim(),
+        email: String(email || "").trim().toLowerCase(),
+        contactNumber: String(contactNumber || "").trim(),
+        industry: String(industry || "").trim(),
+        message: String(message || "").trim(),
+        tier: String(tier || "").trim()
+      };
       const res = await fetch("/api/contact", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name,
-          businessName,
-          website,
-          email,
-          contactNumber,
-          industry,
-          message,
-          tier
-        })
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();

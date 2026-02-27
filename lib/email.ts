@@ -60,5 +60,9 @@ export async function sendEmail(options: {
     subject: options.subject,
     html: options.html,
     text: options.text,
+    headers: {
+      "X-Mailer": "GPTO",
+      "MIME-Version": "1.0",
+    },
   });
 }

@@ -184,14 +184,16 @@ function AdminLoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={
-      <div className="adminLogin">
-        <div className="adminLoginCard">
-          <h1>Admin Login</h1>
-          <p className="adminLoginSubtitle">Loading...</p>
+    <Suspense
+      fallback={
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", background: "#f9fafb" }}>
+          <div style={{ background: "white", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", padding: "40px", width: "100%", maxWidth: "400px" }}>
+            <h1 style={{ margin: "0 0 8px 0", fontSize: "28px", fontWeight: 900, color: "#c20f2c" }}>Admin Login</h1>
+            <p style={{ margin: "0 0 32px 0", color: "rgba(0, 0, 0, 0.6)", fontSize: "14px" }}>Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <AdminLoginForm />
     </Suspense>
   );

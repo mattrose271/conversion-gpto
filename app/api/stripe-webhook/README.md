@@ -25,6 +25,41 @@ The webhook URL in Stripe Dashboard must point to the domain where this app is d
 | `STRIPE_SECRET_KEY` (test) | Yes | For test mode |
 | `STRIPE_LIVE_SECRET_KEY` | Yes for production | For live mode when `NEXT_PUBLIC_ENV=production` |
 
+## Re-enabling a disabled webhook
+
+If Stripe has disabled your webhook, fix the underlying issue first, then re-enable in the Dashboard.
+
+### Step 1: Verify the endpoint is reachable
+
+```bash
+curl -s https://consultingsr.com/api/stripe-webhook
+```
+
+Expected: `{"status":"ok","endpoint":"/api/stripe-webhook"}` (HTTP 200)
+
+If this fails, the app may not be deployed or the URL is wrong.
+
+### Step 2: Verify environment variables (consultingsr.com deployment)
+
+In Vercel (or your host) for the consultingsr.com project:
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `STRIPE_WEBHOOK_SECRET` | Yes | Signing secret from Stripe Dashboard for this exact URL (whsec_...) |
+| `STRIPE_LIVE_SECRET_KEY` | Yes (production) | sk_live_... for real payments |
+| `STRIPE_SECRET_KEY` | Yes (fallback) | sk_test_... when not using live |
+| `NEXT_PUBLIC_ENV` | production | Triggers use of live keys |
+| `DATABASE_URL` | Yes | For storing payment leads |
+
+### Step 3: Get a fresh webhook secret
+
+1. Stripe Dashboard → Developers → Webhooks
+2. Find the endpoint for `https://consultingsr.com/api/stripe-webhook` (or add it)
+3. Click **Reveal** on the signing secret and copy it
+4. Update `STRIPE_WEBHOOK_SECRET` in Vercel
+5. Redeploy the app
+6. Click **Enable** on the webhook in Stripe
+
 ## Troubleshooting
 
 Stripe requires HTTP 200–299 for successful delivery. If you see "other errors":
@@ -34,4 +69,3 @@ Stripe requires HTTP 200–299 for successful delivery. If you see "other errors
 3. **Live vs test** – Use the live webhook secret when processing live payments.
 4. **Check logs** – Server logs will show `[Stripe Webhook]` messages for errors (missing secret, signature failure, processing failure).
 5. **Database** – Ensure the database is reachable from your deployment (e.g. Neon, Vercel Postgres).
-6. **Vercel env** – For the consultingsr.com deployment, ensure `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE_SECRET_KEY`, and `NEXT_PUBLIC_SITE_URL=https://consultingsr.com` are set.

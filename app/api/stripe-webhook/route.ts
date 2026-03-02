@@ -9,6 +9,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/** GET returns 200 if the endpoint is reachable. Use this to verify the URL before re-enabling in Stripe. */
+export async function GET() {
+  return NextResponse.json({ status: "ok", endpoint: "/api/stripe-webhook" });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -356,7 +361,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Invalid request body" }, { status: 400 });
   }
 
-  const stripe = getStripeClient();
+  let stripe: Stripe;
+  try {
+    stripe = getStripeClient();
+  } catch (error: any) {
+    console.error("[Stripe Webhook] Stripe client init failed:", error?.message);
+    return NextResponse.json(
+      { ok: false, error: "Stripe not configured. Set STRIPE_LIVE_SECRET_KEY (or STRIPE_SECRET_KEY) in env." },
+      { status: 503 }
+    );
+  }
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);

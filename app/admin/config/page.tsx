@@ -25,6 +25,11 @@ interface Config {
     mode: string;
     useLive: boolean;
   };
+  stripeMode: {
+    selected: "auto" | "test" | "live";
+    effective: "test" | "live";
+    default: "test" | "live";
+  };
   webhookEndpoints: Array<{
     id: string;
     url: string;
@@ -39,6 +44,9 @@ interface Config {
 
 export default function ConfigPage() {
   const [config, setConfig] = useState<Config | null>(null);
+  const [selectedStripeMode, setSelectedStripeMode] = useState<"auto" | "test" | "live">("auto");
+  const [savingStripeMode, setSavingStripeMode] = useState(false);
+  const [stripeModeMessage, setStripeModeMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,12 +54,39 @@ export default function ConfigPage() {
       .then((res) => res.json())
       .then((data) => {
         setConfig(data.config);
+        setSelectedStripeMode(data.config?.stripeMode?.selected || "auto");
         setLoading(false);
       })
       .catch(() => {
         setLoading(false);
       });
   }, []);
+
+  const saveStripeMode = async () => {
+    setSavingStripeMode(true);
+    setStripeModeMessage("");
+    try {
+      const res = await fetch("/api/admin/config/stripe-mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: selectedStripeMode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to update Stripe mode");
+      }
+
+      const refreshed = await fetch("/api/admin/config");
+      const refreshedData = await refreshed.json();
+      setConfig(refreshedData.config);
+      setSelectedStripeMode(refreshedData.config?.stripeMode?.selected || selectedStripeMode);
+      setStripeModeMessage("Stripe mode updated.");
+    } catch (error: any) {
+      setStripeModeMessage(error?.message || "Failed to update Stripe mode");
+    } finally {
+      setSavingStripeMode(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -141,6 +176,39 @@ export default function ConfigPage() {
           </div>
           <p className="adminConfigDescription">
             Current environment configuration
+          </p>
+        </div>
+
+        <div className="adminConfigCard">
+          <h2>Stripe Mode Override</h2>
+          <div className="adminConfigStatus">
+            <div className="adminConfigKeys">
+              <div>Effective Mode: {config.stripeMode.effective === "live" ? "Production" : "Sandbox"}</div>
+              <div>Default Mode: {config.stripeMode.default === "live" ? "Production" : "Sandbox"}</div>
+            </div>
+            <div className="adminConfigModeControls">
+              <select
+                value={selectedStripeMode}
+                onChange={(e) => setSelectedStripeMode(e.target.value as "auto" | "test" | "live")}
+                className="adminConfigModeSelect"
+              >
+                <option value="auto">Auto (follow env default)</option>
+                <option value="test">Sandbox (test keys)</option>
+                <option value="live">Production (live keys)</option>
+              </select>
+              <button
+                type="button"
+                onClick={saveStripeMode}
+                className="adminConfigModeButton"
+                disabled={savingStripeMode}
+              >
+                {savingStripeMode ? "Saving..." : "Save Mode"}
+              </button>
+            </div>
+            {stripeModeMessage && <span className="adminConfigStatusInfo">{stripeModeMessage}</span>}
+          </div>
+          <p className="adminConfigDescription">
+            Use Sandbox mode for card testing. This affects checkout and billing requests made from this browser session.
           </p>
         </div>
       </div>
@@ -243,6 +311,32 @@ export default function ConfigPage() {
           flex-direction: column;
           gap: 4px;
           font-size: 14px;
+        }
+        .adminConfigModeControls {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        .adminConfigModeSelect {
+          padding: 10px 12px;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+          border-radius: 6px;
+          font-size: 14px;
+          min-width: 240px;
+        }
+        .adminConfigModeButton {
+          padding: 10px 14px;
+          background: var(--brand-red, #c20f2c);
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .adminConfigModeButton:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
         .adminConfigStatusCode {
           font-family: monospace;

@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { resolveStripeMode, StripeMode } from "./stripe-mode";
 
 let cachedStripe: Stripe | null = null;
 let cachedKey: string | null = null;
@@ -9,16 +10,12 @@ let cachedKey: string | null = null;
  * - STRIPE_USE_LIVE=false: force test mode even in production
  * - Otherwise: use STRIPE_SECRET_KEY (sandbox)
  */
-function getStripeSecretKey(): string {
-  const explicitLive = process.env.STRIPE_USE_LIVE === "true";
-  const explicitTest = process.env.STRIPE_USE_LIVE === "false";
-  const isProduction = process.env.NEXT_PUBLIC_ENV === "production";
-  const useLive = explicitLive || (isProduction && !explicitTest);
-
+function getStripeSecretKey(mode: StripeMode = "auto"): string {
+  const resolvedMode = resolveStripeMode(mode);
   const testKey = process.env.STRIPE_SECRET_KEY;
   const liveKey = process.env.STRIPE_LIVE_SECRET_KEY;
 
-  if (useLive) {
+  if (resolvedMode === "live") {
     if (liveKey) return liveKey;
     throw new Error("Production mode requires STRIPE_LIVE_SECRET_KEY. Set it in .env");
   }
@@ -28,8 +25,8 @@ function getStripeSecretKey(): string {
   );
 }
 
-export function getStripeClient(): Stripe {
-  const stripeKey = getStripeSecretKey();
+export function getStripeClient(mode: StripeMode = "auto"): Stripe {
+  const stripeKey = getStripeSecretKey(mode);
 
   if (!cachedStripe || cachedKey !== stripeKey) {
     cachedStripe = new Stripe(stripeKey);

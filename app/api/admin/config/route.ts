@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { getAdminSession } from "@/lib/admin-auth";
 import { getStripeWebhookUrl } from "@/lib/payments";
+import { getDefaultStripeMode, getStripeModeFromCookie, resolveStripeMode } from "@/lib/stripe-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ export async function GET() {
   }
 
   try {
+    const selectedStripeMode = await getStripeModeFromCookie();
+    const effectiveStripeMode = resolveStripeMode(selectedStripeMode);
     const webhookUrl = getStripeWebhookUrl();
     const config: any = {
       webhookSecret: {
@@ -36,6 +39,11 @@ export async function GET() {
         mode: process.env.NEXT_PUBLIC_ENV || "development",
         useLive: process.env.STRIPE_USE_LIVE === "true" || process.env.NEXT_PUBLIC_ENV === "production",
       },
+      stripeMode: {
+        selected: selectedStripeMode,
+        effective: effectiveStripeMode,
+        default: getDefaultStripeMode(),
+      },
       webhookEndpoints: [] as any[],
     };
 
@@ -52,7 +60,7 @@ export async function GET() {
 
     // Try to fetch webhook endpoints from Stripe
     try {
-      const stripe = getStripeClient();
+      const stripe = getStripeClient(selectedStripeMode);
       const endpoints = await stripe.webhookEndpoints.list({ limit: 10 });
       config.webhookEndpoints = endpoints.data.map((endpoint) => ({
         id: endpoint.id,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTierFromSession } from "@/lib/payments";
 import { getStripeClient } from "@/lib/stripe";
+import { getStripeModeFromCookie } from "@/lib/stripe-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "session_id is required" }, { status: 400 });
     }
 
-    const stripe = getStripeClient();
+    const stripeMode = await getStripeModeFromCookie();
+    const stripe = getStripeClient(stripeMode);
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items.data.price"],
     });

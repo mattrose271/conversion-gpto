@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
 import { getStripeWebhookUrl } from "@/lib/payments";
+import { getStripeModeFromCookie, resolveStripeMode } from "@/lib/stripe-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
     // Get webhook secret for display
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "Not configured";
     const webhookUrl = getStripeWebhookUrl();
+    const stripeMode = await getStripeModeFromCookie();
+    const effectiveStripeMode = resolveStripeMode(stripeMode);
 
     // Return instructions and webhook secret
     return NextResponse.json({
@@ -35,6 +38,7 @@ export async function POST(req: Request) {
         "5. Check the webhook events page to see the event",
       ],
       productionUrl: webhookUrl,
+      stripeMode: effectiveStripeMode,
       eventType,
     });
   } catch (error: any) {

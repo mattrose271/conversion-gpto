@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { getAuditRecipients, getCheckoutBaseUrl, getStripePriceDataForTier, PAYMENT_TIERS } from "@/lib/payments";
 import { getStripeClient } from "@/lib/stripe";
+import { getStripeModeFromCookie } from "@/lib/stripe-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +56,8 @@ export async function POST(req: Request) {
 
     const input = Body.parse(await req.json());
 
-    const stripe = getStripeClient();
+    const stripeMode = await getStripeModeFromCookie();
+    const stripe = getStripeClient(stripeMode);
     const priceData = getStripePriceDataForTier(input.tier);
     const baseUrl = getCheckoutBaseUrl();
     const recipients = getAuditRecipients();

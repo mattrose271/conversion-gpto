@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCheckoutBaseUrl } from "@/lib/payments";
 import { getStripeClient } from "@/lib/stripe";
+import { getStripeModeFromCookie } from "@/lib/stripe-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,8 @@ const Body = z.object({
 export async function POST(req: Request) {
   try {
     const input = Body.parse(await req.json());
-    const stripe = getStripeClient();
+    const stripeMode = await getStripeModeFromCookie();
+    const stripe = getStripeClient(stripeMode);
     const checkoutSession = await stripe.checkout.sessions.retrieve(input.sessionId);
 
     const customerId = typeof checkoutSession.customer === "string" ? checkoutSession.customer : null;

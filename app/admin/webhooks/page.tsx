@@ -93,6 +93,8 @@ export default function WebhooksPage() {
         >
           <option value="">All Event Types</option>
           <option value="checkout.session.completed">checkout.session.completed</option>
+          <option value="checkout.session.async_payment_succeeded">checkout.session.async_payment_succeeded</option>
+          <option value="checkout.session.async_payment_failed">checkout.session.async_payment_failed</option>
           <option value="customer.subscription.created">customer.subscription.created</option>
           <option value="customer.subscription.updated">customer.subscription.updated</option>
           <option value="customer.subscription.deleted">customer.subscription.deleted</option>

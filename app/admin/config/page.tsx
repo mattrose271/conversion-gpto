@@ -17,6 +17,7 @@ interface Config {
   endpoint: {
     url: string;
     reachable: boolean;
+    registered?: boolean;
     statusCode?: number;
     error?: string;
   };
@@ -118,6 +119,9 @@ export default function ConfigPage() {
             {config.endpoint.statusCode && (
               <span className="adminConfigStatusCode">HTTP {config.endpoint.statusCode}</span>
             )}
+            <span className={config.endpoint.registered ? "adminConfigStatusOk" : "adminConfigStatusError"}>
+              {config.endpoint.registered ? "✓ Registered in Stripe" : "✗ Not found in Stripe endpoints"}
+            </span>
             {config.endpoint.error && <span className="adminConfigError">{config.endpoint.error}</span>}
           </div>
           <p className="adminConfigDescription">

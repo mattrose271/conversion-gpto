@@ -126,7 +126,7 @@ async function crawl(url: string) {
     // small batches to keep things responsive and avoid huge request storms
     const batch = queue.splice(0, Math.min(8, queue.length));
 
-    // ✅ Sequential processing (no p-limit)
+    // Sequential processing (no p-limit)
     for (const item of batch) {
       if (pages.length >= maxPages) break;
 

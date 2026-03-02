@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { getAdminSession } from "@/lib/admin-auth";
+import { getStripeWebhookUrl } from "@/lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export async function GET() {
   }
 
   try {
+    const webhookUrl = getStripeWebhookUrl();
     const config: any = {
       webhookSecret: {
         configured: !!process.env.STRIPE_WEBHOOK_SECRET,
@@ -27,7 +29,7 @@ export async function GET() {
         },
       },
       endpoint: {
-        url: "https://consultingsr.com/api/stripe-webhook",
+        url: webhookUrl,
         reachable: false,
       },
       environment: {
@@ -61,6 +63,7 @@ export async function GET() {
         events: endpoint.enabled_events,
         created: endpoint.created,
       }));
+      config.endpoint.registered = endpoints.data.some((endpoint) => endpoint.url === webhookUrl);
     } catch (error: any) {
       config.webhookEndpointsError = error.message;
     }

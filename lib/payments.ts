@@ -81,6 +81,10 @@ export function getCheckoutBaseUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "http://localhost:3000";
 }
 
+export function getStripeWebhookUrl(): string {
+  return `${getCheckoutBaseUrl()}/api/stripe-webhook`;
+}
+
 export function getAuditRecipients(): string[] {
   const recipientsEnv = process.env.AUDIT_EMAIL_RECIPIENTS || "jlethgo@conversionia.com";
   return recipientsEnv

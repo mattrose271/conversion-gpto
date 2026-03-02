@@ -45,6 +45,8 @@ export default function TestWebhookPage() {
               className="adminTestWebhookSelect"
             >
               <option value="checkout.session.completed">checkout.session.completed</option>
+              <option value="checkout.session.async_payment_succeeded">checkout.session.async_payment_succeeded</option>
+              <option value="checkout.session.async_payment_failed">checkout.session.async_payment_failed</option>
               <option value="customer.subscription.created">customer.subscription.created</option>
               <option value="customer.subscription.updated">customer.subscription.updated</option>
               <option value="customer.subscription.deleted">customer.subscription.deleted</option>
@@ -103,7 +105,7 @@ export default function TestWebhookPage() {
               Forward events (local): <code>stripe listen --forward-to localhost:3000/api/stripe-webhook</code>
             </li>
             <li>
-              Production endpoint: <code>https://consultingsr.com/api/stripe-webhook</code>
+              Production endpoint: <code>{result?.productionUrl || "https://your-domain.com/api/stripe-webhook"}</code>
             </li>
             <li>
               Trigger test events: <code>stripe trigger checkout.session.completed</code>
@@ -114,7 +116,8 @@ export default function TestWebhookPage() {
             <code>STRIPE_WEBHOOK_SECRET</code> environment variable for local testing.
           </p>
           <p>
-            <strong>Production Webhook URL:</strong> <code>https://consultingsr.com/api/stripe-webhook</code>
+            <strong>Production Webhook URL:</strong>{" "}
+            <code>{result?.productionUrl || "https://your-domain.com/api/stripe-webhook"}</code>
           </p>
           <p>
             Make sure this URL is registered in your Stripe Dashboard under Webhooks. The webhook secret for production

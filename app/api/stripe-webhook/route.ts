@@ -28,13 +28,46 @@ function isUniqueConstraintError(error: any): boolean {
 }
 
 function getSummaryPayload(event: Stripe.Event) {
-  const object = event.data?.object as { id?: string } | undefined;
+  const object = event.data?.object as Record<string, any> | undefined;
+  const objectId = typeof object?.id === "string" ? object.id : null;
+
+  const details: Record<string, any> = {};
+  if (event.type.startsWith("checkout.session")) {
+    details.checkoutSessionId = objectId;
+    details.customerId = typeof object?.customer === "string" ? object.customer : null;
+    details.subscriptionId = typeof object?.subscription === "string" ? object.subscription : null;
+    details.status = typeof object?.status === "string" ? object.status : null;
+    details.customerEmail =
+      typeof object?.customer_details?.email === "string"
+        ? object.customer_details.email
+        : typeof object?.customer_email === "string"
+        ? object.customer_email
+        : null;
+    details.metadata = object?.metadata || null;
+  } else if (event.type.startsWith("customer.subscription")) {
+    details.subscriptionId = objectId;
+    details.customerId = typeof object?.customer === "string" ? object.customer : null;
+    details.status = typeof object?.status === "string" ? object.status : null;
+    details.cancelAtPeriodEnd = Boolean(object?.cancel_at_period_end);
+  } else if (event.type.startsWith("invoice.")) {
+    details.invoiceId = objectId;
+    details.customerId = typeof object?.customer === "string" ? object.customer : null;
+    details.subscriptionId = typeof object?.subscription === "string" ? object.subscription : null;
+    details.status = typeof object?.status === "string" ? object.status : null;
+    details.customerEmail = typeof object?.customer_email === "string" ? object.customer_email : null;
+    details.amountDue = typeof object?.amount_due === "number" ? object.amount_due : null;
+    details.amountPaid = typeof object?.amount_paid === "number" ? object.amount_paid : null;
+  }
+
   return {
     id: event.id,
     type: event.type,
     created: event.created,
     livemode: event.livemode,
-    objectId: object?.id || null,
+    object: {
+      id: objectId,
+      ...details,
+    },
   };
 }
 
@@ -321,7 +354,10 @@ async function handleInvoiceEvent(event: Stripe.Event) {
 async function processEvent(stripe: Stripe, event: Stripe.Event) {
   switch (event.type) {
     case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded":
       await handleCheckoutCompleted(stripe, event);
+      return;
+    case "checkout.session.async_payment_failed":
       return;
     case "customer.subscription.created":
     case "customer.subscription.updated":

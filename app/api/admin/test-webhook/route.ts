@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getStripeClient } from "@/lib/stripe";
 import { getAdminSession } from "@/lib/admin-auth";
-import Stripe from "stripe";
+import { getStripeWebhookUrl } from "@/lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,15 +18,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Event type is required" }, { status: 400 });
     }
 
-    const stripe = getStripeClient();
-
-    // Trigger a test event using Stripe CLI simulation
-    // Note: This requires the Stripe CLI to be running locally
-    // For production, you would use stripe.events.create() or stripe.testHelpers.events.create()
-    // But for now, we'll provide instructions and return the webhook secret
-
     // Get webhook secret for display
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "Not configured";
+    const webhookUrl = getStripeWebhookUrl();
 
     // Return instructions and webhook secret
     return NextResponse.json({
@@ -37,11 +30,11 @@ export async function POST(req: Request) {
       instructions: [
         "1. Install Stripe CLI: https://stripe.com/docs/stripe-cli",
         `2. Run: stripe listen --forward-to localhost:3000/api/stripe-webhook (for local testing)`,
-        `3. For production, ensure webhook endpoint is registered: https://consultingsr.com/api/stripe-webhook`,
+        `3. For deployed env, ensure webhook endpoint is registered: ${webhookUrl}`,
         `4. In another terminal, run: stripe trigger ${eventType}`,
         "5. Check the webhook events page to see the event",
       ],
-      productionUrl: "https://consultingsr.com/api/stripe-webhook",
+      productionUrl: webhookUrl,
       eventType,
     });
   } catch (error: any) {

@@ -5,7 +5,7 @@ The webhook endpoint is at `/api/stripe-webhook`. Stripe sends events here for `
 ## Configuration
 
 1. **Stripe Dashboard** → Developers → Webhooks → Add endpoint
-2. **Endpoint URL**: `https://consultingsr.com/api/stripe-webhook` (production)
+2. **Endpoint URL**: `${NEXT_PUBLIC_SITE_URL}/api/stripe-webhook` (production)
 3. **Events to send**: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
 4. Copy the **Signing secret** (starts with `whsec_`) and set `STRIPE_WEBHOOK_SECRET` in your environment
 
@@ -13,8 +13,8 @@ The webhook endpoint is at `/api/stripe-webhook`. Stripe sends events here for `
 
 The webhook URL in Stripe Dashboard must point to the domain where this app is deployed. If you receive "webhook delivery failed" emails:
 
-- **Wrong URL**: Stripe may be sending to an old or incorrect URL. Production webhook must be `https://consultingsr.com/api/stripe-webhook`.
-- **Fix**: Ensure the webhook endpoint URL in Stripe Dashboard is `https://consultingsr.com/api/stripe-webhook`.
+- **Wrong URL**: Stripe may be sending to an old or incorrect URL. Production webhook must match `${NEXT_PUBLIC_SITE_URL}/api/stripe-webhook`.
+- **Fix**: Ensure the webhook endpoint URL in Stripe Dashboard matches your deployed domain.
 - **Live vs Test**: Create separate webhook endpoints for test and live mode. Each has its own signing secret. Use the live secret when `STRIPE_USE_LIVE=true` or `NEXT_PUBLIC_ENV=production`.
 
 ## Environment Variables
@@ -32,16 +32,16 @@ If Stripe has disabled your webhook, fix the underlying issue first, then re-ena
 ### Step 1: Verify the endpoint is reachable
 
 ```bash
-curl -s https://consultingsr.com/api/stripe-webhook
+curl -s ${NEXT_PUBLIC_SITE_URL}/api/stripe-webhook
 ```
 
 Expected: `{"status":"ok","endpoint":"/api/stripe-webhook"}` (HTTP 200)
 
 If this fails, the app may not be deployed or the URL is wrong.
 
-### Step 2: Verify environment variables (consultingsr.com deployment)
+### Step 2: Verify environment variables for your deployment
 
-In Vercel (or your host) for the consultingsr.com project:
+In Vercel (or your host) for the active production project:
 
 | Variable | Required | Notes |
 |----------|----------|-------|
@@ -54,7 +54,7 @@ In Vercel (or your host) for the consultingsr.com project:
 ### Step 3: Get a fresh webhook secret
 
 1. Stripe Dashboard → Developers → Webhooks
-2. Find the endpoint for `https://consultingsr.com/api/stripe-webhook` (or add it)
+2. Find the endpoint for `${NEXT_PUBLIC_SITE_URL}/api/stripe-webhook` (or add it)
 3. Click **Reveal** on the signing secret and copy it
 4. Update `STRIPE_WEBHOOK_SECRET` in Vercel
 5. Redeploy the app

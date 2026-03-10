@@ -77,73 +77,312 @@ function hasAny(text: string, phrases: string[]) {
   return phrases.some((p) => t.includes(p));
 }
 
-async function fetchText(url: string, timeoutMs = 6000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      redirect: "follow",
-      signal: controller.signal,
-      headers: { "user-agent": "GPTO-AuditBot/0.1" }
-    });
-    const text = await res.text();
-    return { status: res.status, text };
-  } finally {
-    clearTimeout(t);
+const USER_AGENT = "GPTO-AuditBot/0.1";
+const MAX_SITEMAP_FILES = 12;
+
+type FetchTextOptions = {
+  timeoutMs?: number;
+  retries?: number;
+  method?: "GET" | "HEAD";
+  accept?: string;
+};
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function toArray<T>(value: T | T[] | null | undefined): T[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
+function equivalentHost(a: string, b: string) {
+  const aa = (a || "").toLowerCase().replace(/^www\./, "");
+  const bb = (b || "").toLowerCase().replace(/^www\./, "");
+  return aa === bb;
+}
+
+function isInScope(u: URL, scopeHost: string) {
+  return /^https?:$/i.test(u.protocol) && equivalentHost(u.hostname, scopeHost);
+}
+
+function normalizeCrawlUrl(raw: string) {
+  const u = new URL(raw);
+  u.hash = "";
+
+  // Remove common tracking params to reduce duplicates.
+  const trackingKeys = [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "gclid",
+    "fbclid",
+    "msclkid",
+  ];
+  for (const k of trackingKeys) u.searchParams.delete(k);
+
+  if (u.pathname !== "/") {
+    u.pathname = u.pathname.replace(/\/+$/, "") || "/";
   }
+
+  return u.toString();
+}
+
+function shouldSkipPath(pathname: string) {
+  const lower = (pathname || "").toLowerCase();
+  if (/^\/(?:_next|api|static)\b/.test(lower)) return true;
+  return /\.(?:js|css|mjs|map|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|pdf|zip|gz|xml|txt|csv|mp4|webm)$/i.test(
+    lower
+  );
+}
+
+function shouldCrawlUrl(u: URL) {
+  return !shouldSkipPath(u.pathname);
+}
+
+async function fetchText(url: string, timeoutOrOptions: number | FetchTextOptions = 6000) {
+  const opts: FetchTextOptions =
+    typeof timeoutOrOptions === "number" ? { timeoutMs: timeoutOrOptions } : timeoutOrOptions;
+
+  const timeoutMs = opts.timeoutMs ?? 6000;
+  const retries = opts.retries ?? 1;
+  const method = opts.method ?? "GET";
+  const accept = opts.accept;
+
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        redirect: "follow",
+        method,
+        signal: controller.signal,
+        headers: {
+          "user-agent": USER_AGENT,
+          ...(accept ? { accept } : {}),
+        },
+      });
+
+      const text = method === "HEAD" ? "" : await res.text();
+      return { status: res.status, text, finalUrl: res.url };
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < retries) {
+        await sleep(200 * (attempt + 1));
+      }
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  throw lastError;
+}
+
+function readLocValue(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "object") {
+    if (typeof value["#text"] === "string") return value["#text"].trim() || null;
+    if (typeof value.__text === "string") return value.__text.trim() || null;
+  }
+  return null;
+}
+
+function parseSitemapXml(xml: string): { pageUrls: string[]; childSitemaps: string[] } {
+  const parser = new XMLParser({ ignoreAttributes: false });
+  const parsed: any = parser.parse(xml);
+
+  const pageUrls: string[] = [];
+  for (const entry of toArray(parsed?.urlset?.url)) {
+    const loc = readLocValue((entry as any)?.loc);
+    if (loc) pageUrls.push(loc);
+  }
+
+  const childSitemaps: string[] = [];
+  for (const entry of toArray(parsed?.sitemapindex?.sitemap)) {
+    const loc = readLocValue((entry as any)?.loc);
+    if (loc) childSitemaps.push(loc);
+  }
+
+  return { pageUrls, childSitemaps };
 }
 
 // ----------------------------
 // Deterministic discovery (sitemap + crawl)
 // ----------------------------
-async function getSitemapUrls(origin: string, maxPages: number) {
+async function getRobotsSitemaps(origin: string) {
   try {
-    const { status, text } = await fetchText(`${origin}/sitemap.xml`, 6000);
-    if (status >= 400) return null;
-
-    const parser = new XMLParser({ ignoreAttributes: false });
-    const parsed: any = parser.parse(text);
+    const { status, text } = await fetchText(`${origin}/robots.txt`, {
+      timeoutMs: 8000,
+      retries: 1,
+      accept: "text/plain,*/*",
+    });
+    if (status >= 400 || !text) return [];
 
     const urls: string[] = [];
-    const urlsetRaw: any = parsed?.urlset?.url;
-
-    const urlEntries: any[] = Array.isArray(urlsetRaw)
-      ? urlsetRaw
-      : urlsetRaw
-      ? [urlsetRaw]
-      : [];
-
-    for (const entry of urlEntries) {
-      const loc = entry?.loc;
-      if (loc) urls.push(String(loc));
+    for (const line of text.split(/\r?\n/)) {
+      const match = line.match(/^\s*sitemap:\s*(\S+)/i);
+      if (!match) continue;
+      try {
+        urls.push(new URL(match[1].trim(), origin).toString());
+      } catch {
+        // ignore malformed sitemap references
+      }
     }
-
-    // ✅ Deterministic: sort, filter, then slice
-    return urls
-      .filter((u) => u.startsWith(origin))
-      .sort((a, b) => a.localeCompare(b))
-      .slice(0, maxPages);
+    return urls;
   } catch {
-    return null;
+    return [];
   }
 }
 
-function extractInternalLinks(html: string, origin: string) {
+async function getSitemapUrls(origin: string, scopeHost: string, maxPages: number) {
+  const robotsSitemaps = await getRobotsSitemaps(origin);
+  const defaultCandidates = [`${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`, `${origin}/sitemap-index.xml`];
+  const queue = [...new Set([...robotsSitemaps, ...defaultCandidates].map((u) => normalizeCrawlUrl(u)))];
+  const seenSitemaps = new Set<string>();
+  const pageUrls = new Set<string>();
+  const errors: string[] = [];
+  const discoveryDeadline = Date.now() + 15000;
+
+  while (queue.length && seenSitemaps.size < MAX_SITEMAP_FILES && pageUrls.size < maxPages * 8) {
+    if (Date.now() > discoveryDeadline) {
+      errors.push("sitemap discovery deadline reached");
+      break;
+    }
+
+    const sitemapUrl = queue.shift()!;
+    if (seenSitemaps.has(sitemapUrl)) continue;
+    seenSitemaps.add(sitemapUrl);
+
+    try {
+      const remaining = discoveryDeadline - Date.now();
+      const timeoutMs = Math.max(2500, Math.min(7000, remaining));
+      const { status, text } = await fetchText(sitemapUrl, {
+        timeoutMs,
+        retries: 0,
+        accept: "application/xml,text/xml,*/*",
+      });
+      if (status >= 400) {
+        errors.push(`${sitemapUrl} (${status})`);
+        continue;
+      }
+
+      const { pageUrls: parsedUrls, childSitemaps } = parseSitemapXml(text);
+
+      for (const raw of parsedUrls) {
+        try {
+          const u = new URL(raw, origin);
+          if (!isInScope(u, scopeHost)) continue;
+          if (!shouldCrawlUrl(u)) continue;
+          pageUrls.add(normalizeCrawlUrl(u.toString()));
+        } catch {
+          // ignore malformed page URL entries
+        }
+      }
+
+      for (const raw of childSitemaps) {
+        try {
+          const child = normalizeCrawlUrl(new URL(raw, sitemapUrl).toString());
+          if (!seenSitemaps.has(child) && queue.length < MAX_SITEMAP_FILES * 4) {
+            queue.push(child);
+          }
+        } catch {
+          // ignore malformed child sitemap references
+        }
+      }
+    } catch {
+      errors.push(`${sitemapUrl} (timeout/error)`);
+    }
+  }
+
+  return {
+    urls: [...pageUrls].sort((a, b) => a.localeCompare(b)).slice(0, maxPages),
+    debug: {
+      candidates: [...new Set([...robotsSitemaps, ...defaultCandidates])].length,
+      fetched: seenSitemaps.size,
+      errors: errors.slice(0, 5),
+    },
+  };
+}
+
+function buildHeuristicSeedUrls(origin: string) {
+  const paths = ["/job", "/jobs", "/careers", "/search", "/about-us", "/open-positions", "/positions"];
+  return paths.map((p) => normalizeCrawlUrl(new URL(p, origin).toString())).sort((a, b) => a.localeCompare(b));
+}
+
+function addInternalLinkCandidate(raw: string, origin: string, scopeHost: string, links: Set<string>) {
+  try {
+    const u = new URL(raw, origin);
+    if (!isInScope(u, scopeHost)) return;
+    if (!shouldCrawlUrl(u)) return;
+    links.add(normalizeCrawlUrl(u.toString()));
+  } catch {
+    // ignore malformed links
+  }
+}
+
+function extractInternalLinks(html: string, origin: string, scopeHost: string) {
   const $ = cheerio.load(html);
   const links = new Set<string>();
 
   $("a[href]").each((_, el) => {
     const href = String($(el).attr("href") || "").trim();
     if (!href) return;
+    addInternalLinkCandidate(href, origin, scopeHost, links);
+  });
 
+  $('link[rel="canonical"][href], link[rel="alternate"][href]').each((_, el) => {
+    const href = String($(el).attr("href") || "").trim();
+    if (!href) return;
+    addInternalLinkCandidate(href, origin, scopeHost, links);
+  });
+
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const raw = $(el).html();
+    if (!raw) return;
     try {
-      const u = new URL(href, origin);
-      if (u.origin === origin) {
-        u.hash = "";
-        links.add(u.toString());
+      const parsed = JSON.parse(raw);
+      const queue: any[] = [parsed];
+      while (queue.length) {
+        const node = queue.pop();
+        if (!node) continue;
+        if (typeof node === "string") {
+          if (node.startsWith("/") || /^https?:\/\//i.test(node)) {
+            addInternalLinkCandidate(node, origin, scopeHost, links);
+          }
+          continue;
+        }
+        if (Array.isArray(node)) {
+          queue.push(...node);
+          continue;
+        }
+        if (typeof node === "object") {
+          for (const value of Object.values(node)) queue.push(value);
+        }
       }
     } catch {}
   });
+
+  const escapedHost = scopeHost.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const absolutePattern = new RegExp(`https?:\\/\\/${escapedHost}[^"'\\s<>{})]+`, "gi");
+  const escapedAbsolutePattern = new RegExp(`https?:\\\\/\\\\/${escapedHost}[^"'\\s<>{})]+`, "gi");
+  const rootPathPattern = /["'`](\/[a-zA-Z0-9][^"'`<>\s]{0,220})["'`]/g;
+
+  for (const match of html.match(absolutePattern) || []) {
+    addInternalLinkCandidate(match, origin, scopeHost, links);
+  }
+  for (const match of html.match(escapedAbsolutePattern) || []) {
+    addInternalLinkCandidate(match.replace(/\\\//g, "/"), origin, scopeHost, links);
+  }
+  for (const match of html.match(rootPathPattern) || []) {
+    const path = match.slice(1, -1);
+    addInternalLinkCandidate(path, origin, scopeHost, links);
+  }
 
   // ✅ Deterministic: sort
   return [...links].sort((a, b) => a.localeCompare(b));
@@ -196,25 +435,28 @@ async function crawl(seedUrl: string) {
 
   const seed = new URL(seedUrl);
   const origin = seed.origin;
+  const scopeHost = seed.hostname;
 
-  const sitemapUrls = await getSitemapUrls(origin, maxPages);
-  const usedSitemap = Boolean(sitemapUrls?.length);
+  const sitemap = await getSitemapUrls(origin, scopeHost, maxPages);
+  const usedSitemap = sitemap.urls.length > 0;
 
   const queue: { url: string; depth: number }[] = [];
   const seen = new Set<string>();
+  let fallbackSeedsInjected = false;
 
   if (usedSitemap) {
-    for (const u of sitemapUrls!) {
+    for (const u of sitemap.urls) {
       queue.push({ url: u, depth: 0 });
       seen.add(u);
     }
   } else {
-    queue.push({ url: seedUrl, depth: 0 });
-    seen.add(seedUrl);
+    const normalizedSeed = normalizeCrawlUrl(seedUrl);
+    queue.push({ url: normalizedSeed, depth: 0 });
+    seen.add(normalizedSeed);
   }
 
   const pages: any[] = [];
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + 25000;
 
   while (queue.length && pages.length < maxPages) {
     if (Date.now() > deadline) break;
@@ -227,7 +469,10 @@ async function crawl(seedUrl: string) {
       if (pages.length >= maxPages) break;
 
       try {
-        const { status, text } = await fetchText(item.url, 6000);
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        const timeoutMs = Math.max(1500, Math.min(5000, remaining));
+        const { status, text } = await fetchText(item.url, { timeoutMs, retries: 0 });
         if (status >= 400) {
           pages.push({ url: item.url, status });
           continue;
@@ -237,8 +482,17 @@ async function crawl(seedUrl: string) {
         pages.push({ url: item.url, status, ...s });
 
         if (!usedSitemap && item.depth < maxDepth) {
-          const links = extractInternalLinks(text, origin);
-          for (const link of links) {
+          const links = extractInternalLinks(text, origin, scopeHost);
+          const discoveryLinks = [...links];
+
+          if (!fallbackSeedsInjected && item.depth === 0 && discoveryLinks.length === 0) {
+            for (const seedCandidate of buildHeuristicSeedUrls(origin)) {
+              discoveryLinks.push(seedCandidate);
+            }
+            fallbackSeedsInjected = true;
+          }
+
+          for (const link of discoveryLinks) {
             if (!seen.has(link) && seen.size < maxPages * 3) {
               seen.add(link);
               queue.push({ url: link, depth: item.depth + 1 });
@@ -254,7 +508,19 @@ async function crawl(seedUrl: string) {
     }
   }
 
-  return { pages, scope: { maxPages, scannedPages: pages.length, usedSitemap }, origin };
+  return {
+    pages,
+    scope: {
+      maxPages,
+      scannedPages: pages.length,
+      usedSitemap,
+      sitemapCandidates: sitemap.debug.candidates,
+      sitemapFetches: sitemap.debug.fetched,
+      sitemapErrors: sitemap.debug.errors,
+      fallbackSeedsInjected,
+    },
+    origin,
+  };
 }
 
 async function crawlCompetitor(competitorUrl: string, maxPages = 5): Promise<{ pages: any[]; origin: string } | null> {
@@ -262,13 +528,14 @@ async function crawlCompetitor(competitorUrl: string, maxPages = 5): Promise<{ p
     const normalized = competitorUrl.startsWith("http") ? competitorUrl : `https://${competitorUrl}`;
     const seed = new URL(normalized);
     const origin = seed.origin;
+    const scopeHost = seed.hostname;
 
-    const sitemapUrls = await getSitemapUrls(origin, maxPages);
+    const sitemap = await getSitemapUrls(origin, scopeHost, maxPages);
     const queue: string[] = [];
     const seen = new Set<string>();
 
-    if (sitemapUrls?.length) {
-      for (const u of sitemapUrls.slice(0, maxPages)) {
+    if (sitemap.urls.length) {
+      for (const u of sitemap.urls.slice(0, maxPages)) {
         if (!seen.has(u)) {
           queue.push(u);
           seen.add(u);
@@ -286,7 +553,10 @@ async function crawlCompetitor(competitorUrl: string, maxPages = 5): Promise<{ p
     for (const pageUrl of queue) {
       if (pages.length >= maxPages || Date.now() > deadline) break;
       try {
-        const { status, text } = await fetchText(pageUrl, 5000);
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        const timeoutMs = Math.max(1200, Math.min(4500, remaining));
+        const { status, text } = await fetchText(pageUrl, { timeoutMs, retries: 0 });
         if (status >= 400) {
           pages.push({ url: pageUrl, status });
           continue;
@@ -1006,6 +1276,12 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
 // ----------------------------
 type CacheEntry = { ts: number; payload: any };
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CRAWL_CACHE_VERSION = "v2";
+
+function isThinDiscoveryScope(scope: any) {
+  if (!scope) return false;
+  return (scope.scannedPages ?? 0) <= 1 && !scope.usedSitemap;
+}
 
 function getCacheMap(): Map<string, CacheEntry> {
   const g: any = globalThis as any;
@@ -1040,12 +1316,15 @@ export async function POST(req: Request) {
     const competitors = normalizeCompetitorUrls(parsed.competitors || []);
 
     const seed = new URL(url);
-    const cacheKey = seed.origin + (competitors.length ? `:${competitors.join(",")}` : "");
+    const cacheKey =
+      `${CRAWL_CACHE_VERSION}:${seed.origin}` + (competitors.length ? `:${competitors.join(",")}` : "");
     const cache = getCacheMap();
 
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-      return NextResponse.json(cached.payload);
+      if (!isThinDiscoveryScope(cached.payload?.scope)) {
+        return NextResponse.json(cached.payload);
+      }
     }
 
     const started = Date.now();
@@ -1081,7 +1360,9 @@ export async function POST(req: Request) {
       competitorSignals: competitorSignals.length ? competitorSignals : undefined,
     };
 
-    cache.set(cacheKey, { ts: Date.now(), payload });
+    if (!isThinDiscoveryScope(payload.scope)) {
+      cache.set(cacheKey, { ts: Date.now(), payload });
+    }
 
     console.log("Audit created", { url, tier: scored.tier, competitorCount: competitorSignals.length });
 

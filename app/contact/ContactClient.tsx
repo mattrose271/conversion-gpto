@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { normalizeSiteUrl } from "@/lib/site-url";
 import EmailModal from "../components/EmailModal";
 
 export default function ContactClient({
@@ -79,7 +80,7 @@ export default function ContactClient({
           if (name) url.searchParams.set("name", name);
           // Add redirect URL to return to website after scheduling
           if (typeof window !== "undefined") {
-            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+            const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin);
             const returnUrl = website ? `${siteUrl}/audit?url=${encodeURIComponent(website)}` : siteUrl;
             url.searchParams.set("redirect", returnUrl);
           }

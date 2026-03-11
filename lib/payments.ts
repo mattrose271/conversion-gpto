@@ -1,3 +1,5 @@
+import { normalizeSiteUrl } from "./site-url";
+
 export const PAYMENT_TIERS = ["Bronze", "Silver", "Gold"] as const;
 
 export type PaymentTier = (typeof PAYMENT_TIERS)[number];
@@ -78,7 +80,7 @@ export function getTierFromSession(
 }
 
 export function getCheckoutBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "http://localhost:3000";
+  return normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL, "http://localhost:3000");
 }
 
 export function getStripeWebhookUrl(): string {

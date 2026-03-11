@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sendEmail } from "@/lib/email";
 import { db } from "@/lib/db";
 import { getTierDeliverables, tierDeliverables } from "@/lib/data/tierDeliverables";
+import { normalizeSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ function generateWelcomeEmailHTML(
   auditSummary?: AuditSummarySection | null
 ): string {
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL || "";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "";
+  const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_VERCEL_URL || "");
 
   const buildCalendlyUrlWithRedirect = () => {
     if (!calendlyUrl) return calendlyUrl;

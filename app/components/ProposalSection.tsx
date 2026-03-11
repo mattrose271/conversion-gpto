@@ -1,6 +1,7 @@
 "use client";
 
 import { getTierDeliverables } from "@/lib/data/tierDeliverables";
+import { normalizeSiteUrl } from "@/lib/site-url";
 import { ComplianceFooter } from "./ComplianceFooter";
 import CheckoutStartButton from "./CheckoutStartButton";
 
@@ -36,7 +37,7 @@ export function ProposalSection({
       if (recommendedTier) url.searchParams.set("tier", recommendedTier);
       if (websiteUrl) url.searchParams.set("website", websiteUrl);
       if (typeof window !== "undefined") {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin);
         const returnUrl = websiteUrl ? `${siteUrl}/audit?url=${encodeURIComponent(websiteUrl)}` : siteUrl;
         url.searchParams.set("redirect", returnUrl);
       }

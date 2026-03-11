@@ -1,6 +1,7 @@
 "use client";
 
 import { getTierDeliverables, type Tier } from "@/lib/data/tierDeliverables";
+import { normalizeSiteUrl } from "@/lib/site-url";
 import CheckoutStartButton from "./CheckoutStartButton";
 
 interface TierDeliverablesProps {
@@ -24,7 +25,7 @@ export default function TierDeliverables({ tier, websiteUrl = "" }: TierDelivera
     if (websiteUrl) url.searchParams.set("website", websiteUrl);
     // Add redirect URL to return to website after scheduling
     if (typeof window !== "undefined") {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin);
       const returnUrl = websiteUrl ? `${siteUrl}/audit?url=${encodeURIComponent(websiteUrl)}` : siteUrl;
       url.searchParams.set("redirect", returnUrl);
     }

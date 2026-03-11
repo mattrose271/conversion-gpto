@@ -8,6 +8,7 @@ import { ProposalSection } from "../components/ProposalSection";
 import { CompetitiveSnapshot } from "../components/CompetitiveSnapshot";
 import { ComplianceFooter } from "../components/ComplianceFooter";
 import CheckoutStartButton from "../components/CheckoutStartButton";
+import { normalizeSiteUrl } from "@/lib/site-url";
 
 type Report = any;
 
@@ -1160,7 +1161,7 @@ function FinalClose({ report }: { report: any }) {
     if (report?.tier) url.searchParams.set("tier", String(report.tier));
     if (report?.url) url.searchParams.set("website", report.url);
     if (typeof window !== "undefined") {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin);
       const returnUrl = report?.url ? `${siteUrl}/audit?url=${encodeURIComponent(report.url)}` : siteUrl;
       url.searchParams.set("redirect", returnUrl);
     }

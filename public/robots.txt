@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: /sitemap.xml
+Host: www.consultingsr.com
+Sitemap: https://www.consultingsr.com/sitemap.xml

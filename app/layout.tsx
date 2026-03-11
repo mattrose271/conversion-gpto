@@ -1,16 +1,30 @@
-export const metadata = {
+import "./brand.css";
+import type { Metadata } from "next";
+import { normalizeSiteUrl } from "@/lib/site-url";
+import Logo from "./components/Logo";
+import NavWithEmail from "./components/NavWithEmail";
+
+const SITE_URL_NORMALIZED = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL_NORMALIZED),
   title: "Conversion Interactive · GPTO",
   description: "Building your brand. Growing your business. GPTO + Panthera.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Conversion Interactive · GPTO",
     description: "AI visibility, telemetry intelligence, and automated content orchestration.",
-    type: "website"
-  }
+    url: "/",
+    siteName: "ConsultingSR GPTO",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
-
-import "./brand.css";
-import Logo from "./components/Logo";
-import NavWithEmail from "./components/NavWithEmail";
 
 export default function Root({ children }: { children: React.ReactNode }) {
   return (

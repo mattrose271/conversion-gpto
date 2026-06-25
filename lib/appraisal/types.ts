@@ -55,9 +55,17 @@ export type EvidenceBundle = z.infer<typeof EvidenceBundleSchema>;
 export const ReadinessRatingSchema = z.enum(["Weak", "Adequate", "Strong"]);
 export const ConfidenceSchema = z.enum(["low", "medium", "high"]);
 
+// OpenAI Structured Outputs rejects JSON Schema's `format: "uri"`, which
+// z.string().url() emits. A pattern keeps evidence links constrained to safe
+// web URLs while remaining compatible with the response-format schema.
+export const EvidenceUrlSchema = z
+  .string()
+  .max(2048)
+  .regex(/^https?:\/\/[^\s]+$/, "Evidence URLs must be absolute HTTP(S) URLs.");
+
 export const ObservedFindingSchema = z.object({
   summary: z.string().min(1).max(700),
-  evidenceUrls: z.array(z.string().url()).max(8),
+  evidenceUrls: z.array(EvidenceUrlSchema).max(8),
 });
 
 export const InferredFindingSchema = z.object({
@@ -97,7 +105,7 @@ export const UnifiedOutputSchema = z.object({
     z.object({
       summary: z.string().min(1).max(700),
       critical: z.boolean(),
-      evidenceUrls: z.array(z.string().url()).max(8),
+      evidenceUrls: z.array(EvidenceUrlSchema).max(8),
     })
   ).max(8),
   blockers: z.array(z.string().min(1).max(500)).max(8),

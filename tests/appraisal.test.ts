@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { zodTextFormat } from "openai/helpers/zod";
 import { normalizeTier } from "../lib/tiers";
 import { sanitizeClaimText } from "../lib/appraisal/safety";
 import { selectAppraisalPackage } from "../lib/appraisal/package-selection";
 import { evaluateAppraisalRateLimit } from "../lib/appraisal/rate-limit";
 import {
+  EvidenceUrlSchema,
   ModuleOutputSchema,
   UnifiedOutputSchema,
   type ModuleOutput,
@@ -102,4 +104,19 @@ test("rate limits enforce email/domain and IP thresholds", () => {
 
 test("module schema rejects unstructured output", () => {
   assert.throws(() => ModuleOutputSchema.parse({ rating: "Good" }));
+});
+
+test("evidence URL schema accepts only absolute HTTP(S) URLs", () => {
+  assert.equal(EvidenceUrlSchema.parse("https://example.com/evidence"), "https://example.com/evidence");
+  assert.throws(() => EvidenceUrlSchema.parse("javascript:alert(1)"));
+  assert.throws(() => EvidenceUrlSchema.parse("/relative-evidence"));
+});
+
+test("appraisal response schemas do not emit unsupported URI formats", () => {
+  const moduleFormat = JSON.stringify(zodTextFormat(ModuleOutputSchema, "gpto_intent_module"));
+  const unifiedFormat = JSON.stringify(zodTextFormat(UnifiedOutputSchema, "gpto_unified"));
+
+  assert.doesNotMatch(moduleFormat, /"format":"uri"/);
+  assert.doesNotMatch(unifiedFormat, /"format":"uri"/);
+  assert.match(moduleFormat, /"pattern":"\^https\?:/);
 });

@@ -424,9 +424,14 @@ function summarize(html: string) {
   const hasJsonLd = $('script[type="application/ld+json"]').length > 0;
   const schemaTypes = extractSchemaTypes(html);
   const text = $("body").text().replace(/\s+/g, " ").trim().slice(0, 20000);
+  const headings = $("h1, h2, h3")
+    .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
+    .get()
+    .filter(Boolean)
+    .slice(0, 20);
   const hasFaqLike = /faq|question|answer|Q&A|frequently asked/i.test(text) || $("[itemprop='acceptedAnswer']").length > 0;
 
-  return { title, metaDescription, canonical, h1Count, h2Count, hasJsonLd, schemaTypes, hasFaqLike, text };
+  return { title, headings, metaDescription, canonical, h1Count, h2Count, hasJsonLd, schemaTypes, hasFaqLike, text };
 }
 
 async function crawl(seedUrl: string) {
@@ -1151,13 +1156,13 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
   };
 
   // Tier mapping
-  let tier: "Bronze" | "Silver" | "Gold";
+  let tier: "Foundation" | "Growth" | "Elite";
   if (grades.overall === "A+" || grades.overall === "A" || (grades.overall === "B" && grades.technicalReadiness !== "D" && grades.technicalReadiness !== "F" && grades.contentDepth !== "D" && grades.contentDepth !== "F")) {
-    tier = "Gold";
+    tier = "Elite";
   } else if (grades.overall === "B" || grades.overall === "C") {
-    tier = "Silver";
+    tier = "Growth";
   } else {
-    tier = "Bronze";
+    tier = "Foundation";
   }
 
   const dims = answer.perDim;
@@ -1178,9 +1183,9 @@ function score(pages: any[], seedUrl: string, origin: string, usedSitemap: boole
 
   const explanations = {
     tierWhy:
-      tier === "Gold"
+      tier === "Elite"
         ? ["Strong overall AI optimization readiness with solid fundamentals; focus on continuous iteration."]
-        : tier === "Silver"
+        : tier === "Growth"
         ? ["Mixed readiness: improve answerability and reinforce fundamentals for consistent AI interpretation."]
         : ["Baseline readiness is low: prioritize clear, consistent explanations on core pages first."],
     perCategory: {
@@ -1307,6 +1312,67 @@ function normalizeCompetitorUrls(urls: string[]): string[] {
   return result;
 }
 
+function matchingSignals(text: string, patterns: Array<[string, RegExp]>) {
+  return patterns.filter(([, pattern]) => pattern.test(text)).map(([label]) => label);
+}
+
+function buildCompactEvidence(input: {
+  websiteUrl: string;
+  pages: any[];
+  scope: any;
+  primarySignals: any;
+  competitorSignals: Array<{ url: string; signals: any }>;
+}) {
+  const authorityPatterns: Array<[string, RegExp]> = [
+    ["testimonials", /\btestimonials?\b|\bwhat (?:our )?clients say\b/i],
+    ["case studies", /\bcase stud(?:y|ies)\b|\bsuccess stor(?:y|ies)\b/i],
+    ["certifications", /\bcertif(?:ied|ication|ications)\b|\baccredited\b/i],
+    ["press", /\bpress\b|\bfeatured in\b|\bmedia\b/i],
+    ["reviews", /\breviews?\b|\brated\b/i],
+  ];
+  const servicePatterns: Array<[string, RegExp]> = [
+    ["services", /\bour services\b|\bservices we (?:offer|provide)\b/i],
+    ["solutions", /\bour solutions\b|\bsolutions for\b/i],
+    ["pricing", /\bpricing\b|\bplans?\b|\bpackages?\b/i],
+    ["industries", /\bindustr(?:y|ies)\b|\bsectors?\b/i],
+    ["use cases", /\buse cases?\b|\bwho (?:we|it) (?:help|serve)\b/i],
+  ];
+  const ctaPatterns: Array<[string, RegExp]> = [
+    ["contact", /\bcontact us\b|\bget in touch\b/i],
+    ["book", /\bbook (?:a )?(?:call|demo|consultation)\b/i],
+    ["start", /\bget started\b|\bstart now\b/i],
+    ["quote", /\brequest (?:a )?quote\b|\bget (?:a )?quote\b/i],
+    ["buy", /\bbuy now\b|\bcheckout\b|\bsubscribe\b/i],
+  ];
+
+  return {
+    websiteUrl: input.websiteUrl,
+    scannedAt: new Date().toISOString(),
+    scannedPages: input.scope.scannedPages || input.pages.length,
+    usedSitemap: Boolean(input.scope.usedSitemap),
+    pages: input.pages.slice(0, 40).map((page) => {
+      const text = String(page.text || "");
+      return {
+        url: page.url,
+        title: String(page.title || ""),
+        headings: Array.isArray(page.headings) ? page.headings.slice(0, 20) : [],
+        excerpt: text.slice(0, 1800),
+        schemaTypes: Array.isArray(page.schemaTypes) ? page.schemaTypes.slice(0, 30) : [],
+        hasFaq: Boolean(page.hasFaqLike),
+        authoritySignals: matchingSignals(text, authorityPatterns),
+        serviceSignals: matchingSignals(text, servicePatterns),
+        ctaSignals: matchingSignals(text, ctaPatterns),
+        status: Number(page.status || 0),
+      };
+    }),
+    structuralSignals: input.primarySignals || null,
+    competitorSignals: input.competitorSignals.map((competitor) => ({
+      url: competitor.url,
+      signals: competitor.signals,
+    })),
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const parsed = Body.parse(await req.json());
@@ -1320,17 +1386,11 @@ export async function POST(req: Request) {
       `${CRAWL_CACHE_VERSION}:${seed.origin}` + (competitors.length ? `:${competitors.join(",")}` : "");
     const cache = getCacheMap();
 
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-      if (!isThinDiscoveryScope(cached.payload?.scope)) {
-        return NextResponse.json(cached.payload);
-      }
-    }
-
     const started = Date.now();
 
     const { pages, scope, origin } = await crawl(url);
     const scored = score(pages, url, origin, scope.usedSitemap);
+    const { tier: _preliminaryTier, ...scoredOutput } = scored;
     const durationMs = Date.now() - started;
 
     let competitorSignals: Array<{ url: string; signals: typeof scored.primarySignals }> = [];
@@ -1354,17 +1414,24 @@ export async function POST(req: Request) {
     const payload = {
       url,
       scope: { ...scope, durationMs },
-      ...scored,
+      ...scoredOutput,
       focusArea,
       competitors: competitors.length ? competitors : undefined,
       competitorSignals: competitorSignals.length ? competitorSignals : undefined,
     };
+    const evidence = buildCompactEvidence({
+      websiteUrl: url,
+      pages,
+      scope: payload.scope,
+      primarySignals: scored.primarySignals,
+      competitorSignals,
+    });
 
     if (!isThinDiscoveryScope(payload.scope)) {
       cache.set(cacheKey, { ts: Date.now(), payload });
     }
 
-    console.log("Audit created", { url, tier: scored.tier, competitorCount: competitorSignals.length });
+    console.log("Preliminary audit created", { url, competitorCount: competitorSignals.length });
 
     // Save audit to database
     let auditId: string | null = null;
@@ -1374,7 +1441,7 @@ export async function POST(req: Request) {
           url,
           domain: seed.hostname,
           email: parsed.email || null,
-          tier: scored.tier || null,
+          tier: null,
           focusArea,
           competitors: competitors.length ? competitors : null,
           scores: scored.scores,
@@ -1384,6 +1451,7 @@ export async function POST(req: Request) {
           primarySignals: scored.primarySignals || null,
           competitorSignals: competitorSignals.length ? competitorSignals.map((c) => c.signals) : null,
           scope: payload.scope,
+          evidence,
         },
       });
       auditId = audit.id;

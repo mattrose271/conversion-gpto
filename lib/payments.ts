@@ -1,24 +1,23 @@
 import { normalizeSiteUrl } from "./site-url";
+import {
+  CANONICAL_TIERS,
+  legacyTierFor,
+  normalizeTier,
+  type CanonicalTier,
+} from "./tiers";
 
-export const PAYMENT_TIERS = ["Bronze", "Silver", "Gold"] as const;
+export const PAYMENT_TIERS = CANONICAL_TIERS;
 
-export type PaymentTier = (typeof PAYMENT_TIERS)[number];
+export type PaymentTier = CanonicalTier;
 
 export const PAYMENT_TIER_TITLES: Record<PaymentTier, string> = {
-  Bronze: "Foundation",
-  Silver: "Growth",
-  Gold: "Elite",
+  Foundation: "Foundation",
+  Growth: "Growth",
+  Elite: "Elite",
 };
 
 export function normalizePaymentTier(value: string | null | undefined): PaymentTier | null {
-  const normalized = (value || "").trim().toLowerCase();
-  if (!normalized) return null;
-
-  if (["bronze", "foundation", "starter"].includes(normalized)) return "Bronze";
-  if (["silver", "growth"].includes(normalized)) return "Silver";
-  if (["gold", "elite", "pro", "enterprise"].includes(normalized)) return "Gold";
-
-  return null;
+  return normalizeTier(value);
 }
 
 /**
@@ -26,19 +25,18 @@ export function normalizePaymentTier(value: string | null | undefined): PaymentT
  * Used for Stripe Checkout when no STRIPE_PRICE_* env vars are set.
  */
 export const TIER_PRICES_CENTS: Record<PaymentTier, number> = {
-  Bronze: 99900,   // $999
-  Silver: 249900,  // $2,499
-  Gold: 499900,    // $4,999
+  Foundation: 99900,
+  Growth: 249900,
+  Elite: 499900,
 };
 
 /** Stripe price_data for subscription — no env vars needed. */
 export function getStripePriceDataForTier(tier: PaymentTier) {
   const amount = TIER_PRICES_CENTS[tier];
-  const title = PAYMENT_TIER_TITLES[tier];
   return {
     currency: "usd" as const,
     product_data: {
-      name: `GPTO ${tier} (${title}) — Monthly`,
+      name: `GPTO ${tier} — Monthly`,
       description: `GPTO ${tier} package, billed monthly. Minimum 3-month commitment.`,
     },
     unit_amount: amount,
@@ -53,23 +51,28 @@ export function getTierFromSession(
   priceId: string | null | undefined
 ): PaymentTier | null {
   // Prefer metadata (always set on our checkout sessions)
-  if (metadataTier && ["Bronze", "Silver", "Gold"].includes(metadataTier)) {
-    return metadataTier as PaymentTier;
-  }
+  const metadataCanonical = normalizePaymentTier(metadataTier);
+  if (metadataCanonical) return metadataCanonical;
 
   // Fallback: amount in cents
   if (typeof amountTotal === "number") {
-    if (amountTotal === TIER_PRICES_CENTS.Bronze) return "Bronze";
-    if (amountTotal === TIER_PRICES_CENTS.Silver) return "Silver";
-    if (amountTotal === TIER_PRICES_CENTS.Gold) return "Gold";
+    if (amountTotal === TIER_PRICES_CENTS.Foundation) return "Foundation";
+    if (amountTotal === TIER_PRICES_CENTS.Growth) return "Growth";
+    if (amountTotal === TIER_PRICES_CENTS.Elite) return "Elite";
   }
 
   // Legacy: env-based price ID (optional)
   if (priceId) {
-    const envVars = {
-      Bronze: process.env.STRIPE_PRICE_BRONZE_MONTHLY,
-      Silver: process.env.STRIPE_PRICE_SILVER_MONTHLY,
-      Gold: process.env.STRIPE_PRICE_GOLD_MONTHLY,
+    const envVars: Record<PaymentTier, string | undefined> = {
+      Foundation:
+        process.env.STRIPE_PRICE_FOUNDATION_MONTHLY ||
+        process.env.STRIPE_PRICE_BRONZE_MONTHLY,
+      Growth:
+        process.env.STRIPE_PRICE_GROWTH_MONTHLY ||
+        process.env.STRIPE_PRICE_SILVER_MONTHLY,
+      Elite:
+        process.env.STRIPE_PRICE_ELITE_MONTHLY ||
+        process.env.STRIPE_PRICE_GOLD_MONTHLY,
     };
     for (const [tier, envVal] of Object.entries(envVars)) {
       if (envVal === priceId) return tier as PaymentTier;
@@ -77,6 +80,10 @@ export function getTierFromSession(
   }
 
   return null;
+}
+
+export function getLegacyPaymentTier(tier: PaymentTier) {
+  return legacyTierFor(tier);
 }
 
 export function getCheckoutBaseUrl(): string {

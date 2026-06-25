@@ -4,20 +4,13 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PricingCards from "./PricingCards";
 import EmailModal from "../components/EmailModal";
-
-function normalizeTier(t: string | undefined) {
-  const v = (t || "").trim().toLowerCase();
-  if (v === "bronze") return "Bronze" as const;
-  if (v === "silver") return "Silver" as const;
-  if (v === "gold") return "Gold" as const;
-  return undefined;
-}
+import { normalizeTier } from "@/lib/tiers";
 
 function PricingPageContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const highlightTier = normalizeTier(searchParams?.get("tier") || undefined);
+  const highlightTier = normalizeTier(searchParams?.get("tier") || undefined) || undefined;
   const website = (searchParams?.get("url") || "").toString();
   const wasCanceled = (searchParams?.get("canceled") || "") === "1";
 

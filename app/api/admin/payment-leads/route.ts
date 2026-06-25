@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/admin-auth";
+import { normalizePaymentTier } from "@/lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
     const where: any = {};
 
     if (tier) {
-      where.tier = tier;
+      where.tier = normalizePaymentTier(tier) || tier;
     }
 
     if (status) {

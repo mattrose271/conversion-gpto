@@ -1,4 +1,6 @@
-export type GptoTier = "Bronze" | "Silver" | "Gold";
+import type { CanonicalTier } from "@/lib/tiers";
+
+export type GptoTier = CanonicalTier;
 
 export interface AuditInput {
   url: string;

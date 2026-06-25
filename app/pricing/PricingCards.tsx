@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PaymentTier } from "@/lib/payments";
+import { normalizePaymentTier } from "@/lib/payments";
 import CheckoutLeadModal from "./CheckoutLeadModal";
 
 type Tier = PaymentTier;
@@ -28,17 +29,9 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
     }
 
     try {
-      // ONLY highlight when arriving from audit via query param (?tier=Gold|Silver|Bronze)
+      // Accept canonical package names and legacy aliases during migration.
       const params = new URLSearchParams(window.location.search);
-      const qp = (params.get("tier") || "").trim().toLowerCase();
-
-      const mapped: Tier | "" =
-        qp === "bronze" ? "Bronze" :
-        qp === "silver" ? "Silver" :
-        qp === "gold" ? "Gold" :
-        "";
-
-      setHighlightTier(mapped);
+      setHighlightTier(normalizePaymentTier(params.get("tier")) || "");
     } catch {
       setHighlightTier("");
     }
@@ -47,7 +40,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
   const plans = useMemo(() => {
     return [
       {
-        tier: "Bronze" as const,
+        tier: "Foundation" as const,
         title: "Foundation",
         price: "$999",
         sub: "Corrects core issues and establishes your AI-visibility performance baseline.",
@@ -61,7 +54,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
         ]
       },
       {
-        tier: "Silver" as const,
+        tier: "Growth" as const,
         title: "Growth",
         price: "$2,499",
         sub: "Strengthens your authority and provides competitive insight.",
@@ -74,7 +67,7 @@ export default function PricingCards({ allowHighlight = true, website = "" }: Pr
         ]
       },
       {
-        tier: "Gold" as const,
+        tier: "Elite" as const,
         title: "Elite",
         price: "$4,999",
         sub: "Automates optimization and delivers advanced competitive intelligence.",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTierFromSession } from "@/lib/payments";
+import { normalizePaymentTier } from "@/lib/payments";
 import { getStripeClient } from "@/lib/stripe";
 import { getStripeModeFromCookie } from "@/lib/stripe-mode";
 
@@ -33,12 +34,7 @@ export async function GET(req: Request) {
         priceId
       ) || null;
 
-    if (tier && tier.length > 0) {
-      const normalized = tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
-      if (normalized === "Bronze" || normalized === "Silver" || normalized === "Gold") {
-        tier = normalized;
-      }
-    }
+    tier = normalizePaymentTier(tier);
 
     const lead = await db.paymentLead.findFirst({
       where: { stripeCheckoutSessionId: sessionId },

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendEmail } from "@/lib/email";
 import { db } from "@/lib/db";
-import { getTierDeliverables, tierDeliverables } from "@/lib/data/tierDeliverables";
 import { normalizeSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -72,10 +71,10 @@ function generateWelcomeEmailHTML(
           <tr>
             <td style="padding: 32px;">
               <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5; color: #111111;">
-                Thank you for requesting your free GPTO audit! We're excited to help you improve your AI visibility and search performance.
+                Thank you for requesting your preliminary GPTO scorecard.
               </p>
               <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5; color: #111111;">
-                <strong style="color: #C20F2C;">What is GPTO?</strong> GPTO (GPT Optimization) helps your website perform in AI-driven search and answer engines. We improve clarity, structure, content depth, and machine-readability so your brand is easier to understand, trust, and recommend.
+                <strong style="color: #C20F2C;">What is GPTO?</strong> GPTO (GPT Optimization) strengthens clarity, structure, content depth, and machine-readability so search and AI systems can interpret your public website more consistently.
               </p>
               <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.5; color: #111111;">
                 ${auditSummary ? "Your audit is complete! Below are your detailed insights about your website's AI readiness and opportunities to optimize your online presence." : "Your audit is being processed. Once complete, you'll receive detailed insights about your website's AI readiness and discover opportunities to optimize your online presence."}
@@ -91,39 +90,6 @@ function generateWelcomeEmailHTML(
             </td>
           </tr>
           ` : ""}
-
-          <!-- All Tier Deliverables Section -->
-          <tr>
-            <td style="padding: 0 32px 32px;">
-              <h2 style="margin: 0 0 20px; font-size: 24px; line-height: 1.3; color: #111111; text-align: center;">
-                Our Service Tiers
-              </h2>
-              ${tierDeliverables.map((deliverable) => `
-              <div style="background: linear-gradient(180deg, #FDFDFD 0%, #F8EDEE 100%); border: 1px solid #eee; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 8px; font-size: 20px; line-height: 1.3; color: #111111;">
-                  ${deliverable.tier} Tier - ${deliverable.title}
-                </h3>
-                <div style="margin: 12px 0;">
-                  <div style="font-size: 28px; font-weight: 900; line-height: 1; margin-bottom: 4px; color: #111111;">
-                    ${deliverable.price} <span style="font-size: 16px; font-weight: 800;">/ month</span>
-                  </div>
-                  <div style="margin-top: 6px; color: #666; font-size: 13px;">
-                    Per month pricing. Minimum 3-month subscription.
-                  </div>
-                  <div style="margin-top: 6px; color: #666; font-size: 14px;">
-                    ${deliverable.subtitle}
-                  </div>
-                </div>
-                <div style="height: 1px; background: rgba(0,0,0,.08); margin: 12px 0;"></div>
-                <ul style="margin: 0; padding-left: 18px; display: grid; gap: 8px; color: #111111;">
-                  ${deliverable.deliverables.map((item: string) => `
-                    <li style="line-height: 1.5; font-size: 14px;">${item}</li>
-                  `).join("")}
-                </ul>
-              </div>
-              `).join("")}
-            </td>
-          </tr>
 
           <!-- Compliance Footer -->
           <tr>
@@ -190,25 +156,14 @@ function generateWelcomeEmailText(
   contactEmails: string[],
   auditSummary?: AuditSummarySection | null
 ): string {
-  let text = `Welcome to ConversionGPTO\n\n`;
-  text += `Thank you for requesting your free GPTO audit! We're excited to help you improve your AI visibility and search performance.\n\n`;
-  text += `What is GPTO? GPTO (GPT Optimization) helps your website perform in AI-driven search and answer engines. We improve clarity, structure, content depth, and machine-readability so your brand is easier to understand, trust, and recommend.\n\n`;
+  let text = `Your Preliminary GPTO Scorecard\n\n`;
+  text += `Thank you for requesting your preliminary GPTO scorecard.\n\n`;
+  text += `GPTO strengthens clarity, structure, content depth, and machine-readability so search and AI systems can interpret your public website more consistently.\n\n`;
   text += `${auditSummary ? "Your audit is complete! Below are your detailed insights about your website's AI readiness and opportunities to optimize your online presence.\n\n" : "Your audit is being processed. Once complete, you'll receive detailed insights about your website's AI readiness and discover opportunities to optimize your online presence.\n\n"}`;
   
   if (auditSummary) {
     text += `${auditSummary.text}\n\n`;
   }
-
-  text += `Our Service Tiers\n\n`;
-  tierDeliverables.forEach((deliverable) => {
-    text += `${deliverable.tier} Tier - ${deliverable.title}\n`;
-    text += `${deliverable.price} / month (minimum 3-month subscription)\n`;
-    text += `${deliverable.subtitle}\n\n`;
-    deliverable.deliverables.forEach((item) => {
-      text += `• ${item}\n`;
-    });
-    text += `\n`;
-  });
 
   text += `---\n`;
   text += `This assessment reflects observable structural and content signals. It does not measure traffic, rankings, lead quality, conversion rates, or revenue performance. GPTO strengthens visibility conditions and authority signals but does not guarantee placement, traffic, or business outcomes.\n\n`;
@@ -399,12 +354,12 @@ export async function POST(req: Request) {
 
     // Save email submission to database
     let emailSubmission;
-    let auditTier: string | null = input.tier ?? null;
+    const auditTier: string | null = null;
     const summaryData: AuditSummaryData = {
       scores: input.scores ?? null,
       grades: input.grades ?? null,
       recommendations: Array.isArray(input.recommendations) ? input.recommendations : null,
-      tierWhy: input.tierWhy ?? null,
+      tierWhy: null,
       businessInfo: input.businessInfo ?? null,
       executiveSummary: input.executiveSummary ?? null
     };
@@ -418,19 +373,17 @@ export async function POST(req: Request) {
         }
       });
 
-      // If auditId is provided, fetch the audit to get the tier
+      // If auditId is provided, fetch persisted preliminary score data.
       if (input.auditId) {
         try {
           const audit = await db.audit.findUnique({
             where: { id: input.auditId },
             select: {
-              tier: true,
               scores: true,
               grades: true,
               recommendations: true,
             },
           });
-          if (audit?.tier) auditTier = audit.tier;
           if (audit?.scores && !summaryData.scores) {
             summaryData.scores = audit.scores as Record<string, number>;
           }
@@ -445,7 +398,7 @@ export async function POST(req: Request) {
               .filter((rec): rec is string => typeof rec === "string");
           }
         } catch (auditError: any) {
-          console.error("Failed to fetch audit tier:", auditError);
+          console.error("Failed to fetch preliminary audit data:", auditError);
         }
       }
     } catch (dbError: any) {
@@ -463,7 +416,7 @@ export async function POST(req: Request) {
     try {
       const welcomeEmailResult = await sendEmail({
         to: input.email,
-        subject: "Welcome to ConversionGPTO - Your GPTO Audit is Ready",
+        subject: "Your Preliminary GPTO Scorecard Is Ready",
         html: generateWelcomeEmailHTML(input.email, auditTier, recipients, auditSummarySection),
         text: generateWelcomeEmailText(input.email, auditTier, recipients, auditSummarySection),
       });
@@ -487,12 +440,11 @@ export async function POST(req: Request) {
             <p>A new user has requested a free GPTO audit.</p>
             <p><strong>Email:</strong> ${input.email}</p>
             ${input.auditId ? `<p><strong>Audit ID:</strong> ${input.auditId}</p>` : ""}
-            ${auditTier ? `<p><strong>Recommended Tier:</strong> ${auditTier}</p>` : ""}
             ${auditSummarySection?.html ?? ""}
             <p>They will now be redirected to the audit page.</p>
           </div>
         `,
-        text: `A new user has requested a free GPTO audit.\n\nEmail: ${input.email}\n${input.auditId ? `Audit ID: ${input.auditId}\n` : ""}${auditTier ? `Recommended Tier: ${auditTier}\n` : ""}${auditSummarySection?.text ? `\n${auditSummarySection.text}\n` : ""}They will now be redirected to the audit page.`,
+        text: `A new user has requested a preliminary GPTO scorecard.\n\nEmail: ${input.email}\n${input.auditId ? `Audit ID: ${input.auditId}\n` : ""}${auditSummarySection?.text ? `\n${auditSummarySection.text}\n` : ""}They can request the full appraisal from the audit page.`,
         replyTo: input.email,
       });
 

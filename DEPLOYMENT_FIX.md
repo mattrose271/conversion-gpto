@@ -41,7 +41,7 @@ Or set up a Vercel build command that runs migrations:
 
 ### 3. Verify Database Connection
 Ensure your `DATABASE_URL` in Vercel:
-- Uses SSL mode: `?sslmode=require` or `?sslmode=prefer`
+- Uses SSL mode: `?sslmode=verify-full`
 - Has correct credentials
 - Points to the correct database
 

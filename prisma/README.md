@@ -25,15 +25,15 @@ npm run db:seed
 ```
 
 This will:
-- Upsert (insert or update) all three tiers: Bronze, Silver, and Gold
+- Upsert (insert or update) all three canonical tiers: Foundation, Growth, and Elite
 - Use the `NEXT_PUBLIC_CALENDLY_URL` from your `.env` if available
 - Show progress for each tier seeded
 
 ### What gets seeded:
 
-- **Bronze** tier: Foundation ($999/mo)
-- **Silver** tier: Growth ($2,499/mo)
-- **Gold** tier: Elite ($4,999/mo)
+- **Foundation** tier: $999/mo
+- **Growth** tier: $2,499/mo
+- **Elite** tier: $4,999/mo
 
 Each tier includes:
 - Title and price

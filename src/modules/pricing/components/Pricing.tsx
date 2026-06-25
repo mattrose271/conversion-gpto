@@ -18,9 +18,9 @@ type Plan = {
 
 function mapPlanToTier(plan: Plan): PaymentTier {
   const slug = (plan.slug || "").toLowerCase();
-  if (slug === "starter") return "Bronze";
-  if (slug === "growth") return "Silver";
-  return "Gold";
+  if (slug === "starter") return "Foundation";
+  if (slug === "growth") return "Growth";
+  return "Elite";
 }
 
 export default function Pricing() {

@@ -99,10 +99,9 @@ export default function PaymentLeadsPage() {
           className="adminPaymentLeadsFilter"
         >
           <option value="">All Tiers</option>
-          <option value="starter">Starter</option>
-          <option value="growth">Growth</option>
-          <option value="pro">Pro</option>
-          <option value="enterprise">Enterprise</option>
+          <option value="Foundation">Foundation</option>
+          <option value="Growth">Growth</option>
+          <option value="Elite">Elite</option>
         </select>
 
         <select

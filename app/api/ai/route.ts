@@ -385,16 +385,16 @@ function score(pages: any[]) {
   const overall = toGrade(overallScore);
 
   // Tier mapping (simple + explainable)
-  let tier: "Bronze" | "Silver" | "Gold";
-  if (overall === "A+" || overall === "A" || (overall === "B" && grades.technicalReadiness !== "D" && grades.technicalReadiness !== "F" && grades.contentDepth !== "D" && grades.contentDepth !== "F")) tier = "Gold";
-  else if (overall === "B" || overall === "C") tier = "Silver";
-  else tier = "Bronze";
+  let tier: "Foundation" | "Growth" | "Elite";
+  if (overall === "A+" || overall === "A" || (overall === "B" && grades.technicalReadiness !== "D" && grades.technicalReadiness !== "F" && grades.contentDepth !== "D" && grades.contentDepth !== "F")) tier = "Elite";
+  else if (overall === "B" || overall === "C") tier = "Growth";
+  else tier = "Foundation";
 
   const explanations = {
     tierWhy:
-      tier === "Gold"
+      tier === "Elite"
         ? ["Strong overall readiness with solid technical and content foundations; focus on continuous optimization."]
-        : tier === "Silver"
+        : tier === "Growth"
         ? ["Mixed readiness: good base but clear gaps; prioritize structured content and technical signals."]
         : ["Fundamentals are weak or missing; focus on baseline clarity and trust signals first."],
     perCategory: {

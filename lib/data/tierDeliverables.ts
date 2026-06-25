@@ -1,9 +1,11 @@
-export type Tier = "Bronze" | "Silver" | "Gold";
+import { normalizeTier, type CanonicalTier } from "@/lib/tiers";
+
+export type Tier = CanonicalTier;
 
 export const TIER_PRICING: Record<Tier, number> = {
-  Bronze: 999,
-  Silver: 2499,
-  Gold: 4999,
+  Foundation: 999,
+  Growth: 2499,
+  Elite: 4999,
 };
 
 export interface TierDeliverable {
@@ -18,7 +20,7 @@ export interface TierDeliverable {
 
 export const tierDeliverables: TierDeliverable[] = [
   {
-    tier: "Bronze",
+    tier: "Foundation",
     title: "Foundation",
     price: "$999",
     priceNote: "Per month pricing. Minimum 3-month subscription.",
@@ -33,7 +35,7 @@ export const tierDeliverables: TierDeliverable[] = [
     ]
   },
   {
-    tier: "Silver",
+    tier: "Growth",
     title: "Growth",
     price: "$2,499",
     priceNote: "Per month pricing. Minimum 3-month subscription.",
@@ -47,7 +49,7 @@ export const tierDeliverables: TierDeliverable[] = [
     ]
   },
   {
-    tier: "Gold",
+    tier: "Elite",
     title: "Elite",
     price: "$4,999",
     priceNote: "Per month pricing. Minimum 3-month subscription.",
@@ -63,7 +65,8 @@ export const tierDeliverables: TierDeliverable[] = [
 ];
 
 export function getTierDeliverables(tier: Tier | string | null | undefined): TierDeliverable | null {
-  if (!tier) return null;
-  const normalizedTier = tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
-  return tierDeliverables.find((td) => td.tier === normalizedTier) || null;
+  const normalizedTier = normalizeTier(tier);
+  return normalizedTier
+    ? tierDeliverables.find((td) => td.tier === normalizedTier) || null
+    : null;
 }

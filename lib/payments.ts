@@ -87,7 +87,7 @@ export function getLegacyPaymentTier(tier: PaymentTier) {
 }
 
 export function getCheckoutBaseUrl(): string {
-  return normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL, "http://localhost:3000");
+  return normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL);
 }
 
 export function getStripeWebhookUrl(): string {
